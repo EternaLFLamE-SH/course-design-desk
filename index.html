@@ -1,0 +1,3306 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>课程设计工作台</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --ground: #1F3A34;
+    --panel: #26453D;
+    --deep: #17302B;
+    --cream: #F1E9D8;
+    --mut: #C3BBA6;
+    --dim: #A7B4A1;
+    --gold: #C79B5B;
+    --gold-soft: #E3C48D;
+    --line: rgba(241,233,216,.20);
+    --line-soft: rgba(241,233,216,.11);
+    --bg: var(--ground);
+    --card: transparent;
+    --text: var(--cream);
+    --sub: var(--dim);
+    --main: var(--gold);
+    --main-soft: rgba(199,155,91,.13);
+    --warn: #D9A25E;
+    --warn-soft: rgba(199,155,91,.10);
+    --ok: #9CC0A0;
+    --ok-soft: rgba(156,192,160,.13);
+  }
+  html { -webkit-font-smoothing: antialiased; }
+  body {
+    background: var(--ground); color: var(--cream);
+    font-family: Georgia, "Songti SC", "SimSun", serif;
+    font-variant-numeric: lining-nums tabular-nums;
+    font-feature-settings: "lnum" 1, "tnum" 1;
+    font-size: 15px; line-height: 1.8;
+    padding-bottom: 40px;
+  }
+  ::selection { background: rgba(199,155,91,.32); color: #fff; }
+
+  /* ============ 滚动条 ============ */
+  /* 只对不支持 webkit 伪元素的浏览器（Firefox）使用标准属性，
+     否则 Chromium 会退回系统原生滚动条（带三角箭头、圆角滑块） */
+  @supports not selector(::-webkit-scrollbar) {
+    html { scrollbar-width: thin; scrollbar-color: rgba(199,155,91,.55) rgba(23,48,43,.35); }
+  }
+  ::-webkit-scrollbar { width: 11px; height: 11px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background-color: rgba(199,155,91,.42);
+    border: 3px solid transparent;
+    border-radius: 0;
+    background-clip: padding-box;
+  }
+  ::-webkit-scrollbar-thumb:hover { background-color: rgba(199,155,91,.68); background-clip: padding-box; }
+  ::-webkit-scrollbar-thumb:active { background-color: rgba(199,155,91,.88); background-clip: padding-box; }
+  ::-webkit-scrollbar-corner { background: transparent; }
+  ::-webkit-scrollbar-button {
+    display: none; width: 0; height: 0;
+  }
+  ::-webkit-scrollbar-button:vertical:start:decrement,
+  ::-webkit-scrollbar-button:vertical:end:increment,
+  ::-webkit-scrollbar-button:horizontal:start:decrement,
+  ::-webkit-scrollbar-button:horizontal:end:increment {
+    display: none; width: 0; height: 0;
+  }
+
+  /* ============ 卷首横带 ============ */
+  .masthead {
+    position: sticky; top: 0; z-index: 20;
+    background: var(--deep);
+    border-bottom: 1px solid rgba(199,155,91,.55);
+  }
+  .band {
+    display: flex; align-items: stretch; padding: 0 40px;
+    background: var(--deep);
+  }
+  .band .seal {
+    width: 52px; height: 52px; border: 1px solid var(--gold); margin: 17px 0;
+    display: grid; place-items: center; color: var(--gold);
+    font-size: 15px; letter-spacing: .06em; flex: none; line-height: 1;
+  }
+  .band .year {
+    font-family: Consolas, monospace; font-size: 12px; letter-spacing: .24em;
+    color: var(--dim); align-self: center; margin: 0 26px 0 16px; white-space: nowrap;
+  }
+  .band .fan { align-self: center; margin-right: 8px; opacity: .45; flex: none; }
+  .band nav { display: flex; align-items: stretch; margin-left: auto; }
+  nav button {
+    background: none; border: 0; cursor: pointer; color: var(--mut);
+    font-family: inherit; font-size: 14.5px; letter-spacing: .24em;
+    padding: 0 19px; position: relative; transition: color .18s;
+  }
+  nav button:hover { background: none; color: var(--cream); }
+  nav button.active { color: var(--gold); font-weight: 400; }
+  nav button.active:after {
+    content: ""; position: absolute; left: 19px; right: 19px; bottom: 0;
+    height: 2px; background: var(--gold);
+  }
+
+  /* 卷首下方细信息带 */
+  .strip {
+    display: flex; align-items: center; gap: 14px; justify-content: flex-end;
+    padding: 5px 40px 7px;
+    background: rgba(23,48,43,.55);
+    border-top: 1px solid var(--line-soft);
+  }
+  .save-state {
+    font-family: Consolas, monospace; font-size: 12px; letter-spacing: .1em;
+    color: var(--dim); margin-right: auto;
+  }
+  .save-state.on { color: var(--gold); }
+
+  /* ============ 按钮 ============ */
+  button {
+    font-family: inherit; font-size: 13.5px; letter-spacing: .12em;
+    padding: 7px 15px; background: transparent; color: var(--mut);
+    border: 1px solid var(--line); border-radius: 0; cursor: pointer;
+    transition: .15s;
+  }
+  button:hover { border-color: var(--gold); color: var(--cream); background: rgba(199,155,91,.07); }
+  button.primary {
+    background: var(--gold); border-color: var(--gold); color: var(--deep);
+    letter-spacing: .14em;
+  }
+  button.primary:hover { background: var(--gold-soft); border-color: var(--gold-soft); color: var(--deep); }
+  button.ghost { border-color: transparent; color: var(--dim); padding: 5px 9px; }
+  button.ghost:hover { border-color: transparent; color: var(--gold); background: none; }
+  button.danger:hover { color: #E8A08E; border-color: rgba(232,160,142,.5); background: rgba(232,160,142,.08); }
+  .strip button { font-size: 12.5px; letter-spacing: .1em; padding: 3px 9px; }
+
+  /* ============ 版面 ============ */
+  main { max-width: 820px; margin: 0 auto; padding: 0 56px 130px; }
+  section { display: none; }
+  section.active { display: block; animation: fade .3s ease-out; }
+  @keyframes fade { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+
+  .rule { display: flex; align-items: center; gap: 14px; margin: 46px 0 20px; }
+  .rule span {
+    font-family: Consolas, monospace; font-size: 12px; letter-spacing: .3em;
+    color: var(--gold); white-space: nowrap;
+  }
+  .rule i { flex: 1; height: 1px; background: var(--line); }
+
+  h1.page-title {
+    font-size: 31px; line-height: 1.42; text-wrap: balance; font-weight: 400; letter-spacing: .04em;
+    margin-bottom: 12px;
+  }
+  h1.page-title em { font-style: normal; color: var(--gold-soft); }
+  .lede { font-size: 14.5px; color: var(--mut); opacity: .92; max-width: 32em; margin-bottom: 4px; }
+
+  /* ============ 框（原 card） ============ */
+  .card {
+    border: 1px solid rgba(199,155,91,.34);
+    background: transparent; border-radius: 0;
+    padding: 24px 26px; margin-top: 30px; margin-bottom: 0;
+    position: relative;
+  }
+  .card:before, .card:after {
+    content: ""; position: absolute; width: 7px; height: 7px; border: 1px solid var(--gold);
+  }
+  .card:before { left: -1px; top: -1px; border-right: 0; border-bottom: 0; }
+  .card:after { right: -1px; bottom: -1px; border-left: 0; border-top: 0; }
+  .card h2 {
+    font-size: 14.5px; font-weight: 400; letter-spacing: .16em; color: var(--gold-soft);
+    margin-bottom: 4px; display: flex; align-items: center; gap: 9px; flex-wrap: wrap;
+  }
+  .card .hint { font-size: 14px; color: var(--mut); margin-bottom: 18px; line-height: 1.85; }
+
+  /* ============ 表单 ============ */
+  label.field { display: block; margin-bottom: 20px; }
+  label.field > span {
+    display: block; font-size: 12.5px; color: var(--dim);
+    letter-spacing: .14em; margin-bottom: 5px;
+  }
+  input[type=text], input[type=date], input[type=email], textarea, select {
+    width: 100%; font-family: inherit; font-size: 15px; line-height: 1.8;
+    font-variant-numeric: lining-nums tabular-nums;
+    font-feature-settings: "lnum" 1, "tnum" 1;
+    color: var(--cream); background: transparent;
+    border: 0; border-bottom: 1px solid var(--line); border-radius: 0;
+    padding: 4px 0 6px; outline: none; resize: vertical;
+    transition: border-color .15s;
+  }
+  input::placeholder, textarea::placeholder { color: rgba(167,180,161,.72); }
+  input:focus, textarea:focus, select:focus {
+    border-bottom-color: var(--gold); box-shadow: none;
+  }
+  textarea { min-height: 86px; }
+  select { appearance: none; cursor: pointer; }
+  select option { background: var(--deep); color: var(--cream); }
+  input[type=date]::-webkit-calendar-picker-indicator { filter: invert(.7) sepia(.3) saturate(2); cursor: pointer; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 28px; }
+  @media (max-width: 660px) { .row2 { grid-template-columns: 1fr; gap: 0; } }
+
+  .empty {
+    color: var(--dim); font-size: 14px; padding: 34px 18px; text-align: center;
+    border: 1px dashed var(--line); line-height: 1.9;
+  }
+  .kv { font-size: 13px; color: var(--dim); font-family: Consolas, monospace; letter-spacing: .04em; }
+  .kv b { color: var(--cream); font-weight: 400; }
+
+  /* ============ 制作路线 ============ */
+  .prog-wrap { display: flex; align-items: center; gap: 14px; margin-bottom: 6px; }
+  .prog { flex: 1; height: 3px; background: rgba(241,233,216,.22); overflow: hidden; }
+  .prog i { display: block; height: 100%; background: var(--gold); width: 0; transition: width .3s; }
+
+  .stage {
+    border: 0; border-bottom: 1px solid var(--line); border-radius: 0;
+    background: transparent; margin-bottom: 0; padding: 22px 0 8px;
+  }
+  .stage-head {
+    display: flex; align-items: baseline; gap: 15px;
+    padding: 0; cursor: pointer; user-select: none;
+  }
+  .stage-head:hover { background: none; }
+  .stage-no {
+    width: auto; height: auto; background: none; border-radius: 0;
+    color: var(--dim); font-family: Consolas, monospace; font-size: 12.5px;
+    letter-spacing: .1em; flex: none; display: inline; font-weight: 400;
+    min-width: 2.1em;
+  }
+  .stage.done .stage-no { background: none; color: var(--gold); }
+  .stage.cur .stage-no { background: none; color: var(--gold-soft); }
+  .stage-title { font-weight: 400; font-size: 17px; letter-spacing: .04em; }
+  .stage.cur .stage-title { color: var(--gold-soft); }
+  .stage-meta {
+    margin-left: auto; font-family: Consolas, monospace; font-size: 12.5px;
+    color: var(--dim); letter-spacing: .08em; white-space: nowrap;
+  }
+  .stage.cur .stage-meta { color: var(--gold); }
+  .stage-body { padding: 0; display: none; }
+  .stage.open .stage-body { display: block; }
+
+  .stage-goal {
+    font-size: 13.5px; color: var(--mut); background: none;
+    border-left: 1px solid var(--gold); border-radius: 0;
+    padding: 2px 0 2px 15px; margin: 14px 0 16px 2.1em;
+  }
+  .stage-goal b { color: var(--gold-soft); font-weight: 400; letter-spacing: .08em; }
+
+  .task {
+    display: flex; gap: 12px; padding: 6px 0; align-items: flex-start;
+    font-size: 14.5px; margin-left: 2.1em;
+  }
+  .task input {
+    appearance: none; -webkit-appearance: none;
+    margin-top: 6px; width: 12px; height: 12px; flex: none;
+    border: 1px solid rgba(241,233,216,.58); border-radius: 0; background: transparent;
+    cursor: pointer; position: relative; accent-color: var(--gold);
+  }
+  .task input:checked { border-color: var(--gold); background: var(--gold); }
+  .task input:checked::after {
+    content: ""; position: absolute; left: 2.5px; top: -0.5px;
+    width: 3px; height: 6px; border: solid var(--deep);
+    border-width: 0 1.5px 1.5px 0; transform: rotate(42deg);
+  }
+  .task .t { display: block; }
+  .task .d { display: block; font-size: 13.5px; color: var(--dim); margin-top: 1px; line-height: 1.7; }
+  .task.checked .t { text-decoration: line-through; color: var(--dim); }
+
+  .traps { margin: 14px 0 10px 2.1em; padding-top: 12px; border-top: 1px dashed rgba(241,233,216,.16); }
+  .traps-t {
+    font-family: Consolas, monospace; font-size: 12px; letter-spacing: .14em;
+    color: var(--warn); margin-bottom: 7px;
+  }
+  .traps li {
+    font-size: 13px; color: var(--mut); background: none;
+    padding: 3px 0 3px 14px; border-radius: 0; margin-bottom: 2px;
+    list-style: none; position: relative; line-height: 1.75;
+  }
+  .traps li:before {
+    content: "·"; position: absolute; left: 2px; top: 2px; color: var(--gold);
+  }
+
+  /* ============ 问题诊断 ============ */
+  .chips { display: flex; flex-wrap: wrap; gap: 9px; margin-bottom: 6px; }
+  .chip {
+    padding: 6px 15px; border: 1px solid var(--line); border-radius: 0;
+    font-family: inherit; font-size: 14px; letter-spacing: .1em;
+    cursor: pointer; background: transparent; color: var(--mut); transition: .14s;
+  }
+  .chip:hover { border-color: var(--gold); color: var(--cream); }
+  .chip.on { background: rgba(199,155,91,.1); border-color: var(--gold); color: var(--gold); }
+
+  .sym-list { display: flex; flex-direction: column; gap: 0; counter-reset: sym; }
+  .sym {
+    padding: 14px 0 14px 36px; border: 0; border-bottom: 1px solid var(--line);
+    border-radius: 0; cursor: pointer; font-size: 15px; background: none;
+    letter-spacing: .03em; color: var(--mut); transition: .14s;
+    counter-increment: sym; position: relative;
+  }
+  .sym:before {
+    content: counter(sym, decimal-leading-zero);
+    position: absolute; left: 0; top: 16px;
+    font-family: Consolas, monospace; font-size: 12.5px;
+    color: var(--dim); letter-spacing: .04em;
+  }
+  .sym:hover:before, .sym.on:before { color: var(--gold); }
+  .sym:hover { border-color: var(--line); background: none; color: var(--gold-soft); }
+  .sym.on { border-color: var(--gold); background: none; color: var(--gold-soft); }
+
+  .result h3 {
+    font-size: 19px; font-weight: 400; letter-spacing: .03em;
+    margin-bottom: 18px; line-height: 1.5;
+  }
+  .keypoint {
+    background: none; color: var(--cream);
+    border-left: 2px solid var(--gold); border-radius: 0;
+    padding: 4px 0 4px 20px; margin-bottom: 26px;
+    font-size: 17px; line-height: 1.7; letter-spacing: .02em;
+  }
+  .keypoint b {
+    display: block; font-weight: 400; font-family: Consolas, monospace;
+    font-size: 11.5px; letter-spacing: .28em; color: var(--gold); margin-bottom: 7px;
+  }
+  .block { margin-bottom: 26px; }
+  .block-t {
+    font-family: Consolas, monospace; font-size: 12px; letter-spacing: .14em;
+    color: var(--mut); margin-bottom: 10px; opacity: .85;
+  }
+  .causes { counter-reset: c; }
+  .causes li {
+    list-style: none; position: relative; background: none; border-radius: 0;
+    padding: 13px 0 13px 32px; margin-bottom: 0; font-size: 15.5px;
+    border-bottom: 1px solid var(--line-soft); line-height: 1.7;
+  }
+  .causes li::before {
+    counter-increment: c; content: counter(c);
+    position: absolute; left: 0; top: 14px;
+    font-family: Consolas, monospace; font-size: 12.5px; color: var(--dim);
+    width: auto; height: auto; background: none; border-radius: 0;
+    display: block; font-weight: 400;
+  }
+  .causes li:first-child::before { background: none; color: var(--gold); }
+  .causes li:first-child { color: var(--gold-soft); }
+  .steps { counter-reset: s; }
+  .steps li {
+    list-style: none; position: relative; padding: 11px 0 11px 32px;
+    font-size: 14.5px; color: var(--mut); border-bottom: 1px solid var(--line-soft);
+    line-height: 1.75;
+  }
+  .steps li:last-child { border-bottom: none; }
+  .steps li::before {
+    counter-increment: s; content: counter(s);
+    position: absolute; left: 0; top: 12px; color: var(--gold);
+    font-family: Consolas, monospace; font-weight: 400; font-size: 12.5px;
+  }
+  .general li {
+    font-size: 14px; margin-bottom: 9px; padding-left: 16px;
+    position: relative; list-style: none; color: var(--mut); line-height: 1.8;
+  }
+  .general li::before {
+    content: ""; position: absolute; left: 3px; top: 11px;
+    width: 4px; height: 4px; border-radius: 0; background: var(--gold); opacity: .55;
+  }
+  .general b { font-weight: 400; color: var(--cream); }
+
+  /* ============ 自由提问 ============ */
+  .chat-card { padding: 24px 26px 22px; }
+  .chat-top { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 16px; }
+  .chat-tools { margin-left: auto; display: flex; align-items: center; gap: 10px; flex-shrink: 0; flex-wrap: wrap; }
+  .chat-tools select { width: auto; min-width: 104px; font-size: 13px; padding: 2px 18px 2px 0; border-bottom-color: var(--line); background-image: linear-gradient(45deg, transparent 50%, var(--gold) 50%), linear-gradient(135deg, var(--gold) 50%, transparent 50%); background-position: right 6px center, right 2px center; background-size: 4px 4px, 4px 4px; background-repeat: no-repeat; }
+  .ctx-toggle {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 13px; color: var(--dim); cursor: pointer; white-space: nowrap;
+    letter-spacing: .06em;
+  }
+  .ctx-toggle input {
+    appearance: none; -webkit-appearance: none;
+    width: 12px; height: 12px; border: 1px solid rgba(241,233,216,.42);
+    border-radius: 0; background: transparent; cursor: pointer; position: relative;
+    accent-color: var(--gold);
+  }
+  .ctx-toggle input:checked { border-color: var(--gold); background: var(--gold); }
+  .ctx-toggle input:checked::after {
+    content: ""; position: absolute; left: 2.5px; top: -0.5px;
+    width: 3px; height: 6px; border: solid var(--deep);
+    border-width: 0 1.5px 1.5px 0; transform: rotate(42deg);
+  }
+
+  .chat-log {
+    height: clamp(210px, 36vh, 400px); min-height: 0; overflow-y: auto;
+    background: transparent; border: 0; border-top: 1px solid var(--line);
+    border-radius: 0; padding: 6px 0 10px;
+    display: flex; flex-direction: column; gap: 0;
+  }
+  .chat-log::-webkit-scrollbar { width: 5px; }
+  .chat-log::-webkit-scrollbar-thumb { background: rgba(241,233,216,.2); }
+  .chat-empty {
+    margin: auto; text-align: center; color: var(--mut);
+    font-size: 14px; line-height: 2; padding: 30px 10px; max-width: 34em;
+  }
+  .chat-empty b {
+    color: var(--gold-soft); display: block; font-size: 17px;
+    font-weight: 400; letter-spacing: .1em; margin-bottom: 10px;
+  }
+
+  .msg {
+    display: flex; flex-direction: column; max-width: 100%;
+    padding: 20px 0; border-bottom: 1px solid var(--line-soft);
+  }
+  .msg:before {
+    font-family: Consolas, monospace; font-size: 11.5px; letter-spacing: .3em;
+    color: var(--dim); margin-bottom: 10px;
+  }
+  .msg.user { align-self: stretch; align-items: flex-start; }
+  .msg.ai { align-self: stretch; }
+  .msg.user:before { content: "你 问"; color: var(--gold); }
+  .msg.ai:before { content: "AI 导 师"; }
+  .bubble {
+    padding: 0; border-radius: 0; background: none; border: 0;
+    font-size: 14.5px; line-height: 1.9; word-break: break-word;
+    color: var(--mut); max-width: 100%;
+  }
+  .msg.user .bubble {
+    background: none; color: var(--cream);
+    font-size: 18px; line-height: 1.75; border-bottom-right-radius: 0;
+    letter-spacing: .01em;
+  }
+  .msg.ai .bubble { background: none; border: 0; border-bottom-left-radius: 0; }
+  .msg-acts {
+    margin-top: 10px; display: flex; gap: 10px; opacity: 0; transition: .15s;
+  }
+  .msg:hover .msg-acts, .msg-acts.show { opacity: 1; }
+  .msg-acts button {
+    font-size: 12px; padding: 4px 10px; color: var(--dim);
+    border-color: var(--line); letter-spacing: .1em;
+  }
+  .msg-acts button:hover { color: var(--gold); border-color: var(--gold); }
+  .msg-err {
+    background: rgba(232,160,142,.09); border: 1px solid rgba(232,160,142,.35);
+    color: #E8B3A4; padding: 12px 15px; border-radius: 0;
+    font-size: 13px; line-height: 1.8;
+  }
+  .bubble p { margin: 0 0 11px; }
+  .bubble p:last-child { margin-bottom: 0; }
+  .bubble .mdh {
+    font-weight: 400; margin: 20px 0 8px; font-size: 16px;
+    color: var(--cream); letter-spacing: .04em;
+  }
+  .bubble .mdh:first-child { margin-top: 0; }
+  .bubble ul, .bubble ol { margin: 8px 0 12px; padding-left: 20px; }
+  .bubble li { margin-bottom: 5px; }
+  .bubble strong { font-weight: 400; color: var(--cream); letter-spacing: .02em; }
+  .bubble code {
+    background: rgba(241,233,216,.09); padding: 1px 5px; border-radius: 0;
+    font-family: Consolas, "Courier New", monospace; font-size: 13px; color: var(--gold-soft);
+  }
+  .bubble pre {
+    background: rgba(10,22,19,.55); color: #D8E2D4; padding: 13px 15px;
+    border-left: 1px solid var(--gold); border-radius: 0;
+    overflow-x: auto; margin: 11px 0; line-height: 1.6;
+  }
+  .bubble pre code { background: none; color: inherit; padding: 0; font-size: 12.5px; }
+  .msg.user .bubble code { background: rgba(241,233,216,.12); }
+  .cursor::after {
+    content: "▍"; color: var(--gold); font-weight: 400;
+    animation: blink 1s steps(2) infinite; margin-left: 1px;
+  }
+  @keyframes blink { 50% { opacity: 0; } }
+
+  .composer { margin-top: 22px; border: 1px solid var(--line); padding: 14px 16px; }
+  .composer textarea {
+    min-height: 58px; max-height: 160px; border: 0; padding: 0; font-size: 15px;
+    resize: none;
+  }
+  .composer textarea:focus { border: 0; }
+  .composer-acts { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+  .chat-tip {
+    font-size: 12px; color: var(--mut); margin-right: auto; opacity: .8;
+    font-family: Consolas, monospace; letter-spacing: .06em;
+  }
+  .sdk-warn {
+    background: rgba(199,155,91,.1); color: var(--gold-soft);
+    border: 1px solid rgba(199,155,91,.35); padding: 11px 14px;
+    border-radius: 0; font-size: 13px; margin-bottom: 14px; line-height: 1.8;
+  }
+
+  /* ============ 登录与授权 ============ */
+  .auth-box { display: flex; align-items: center; gap: 9px; margin-left: 4px; }
+  .auth-user { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+  .auth-name {
+    max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    color: var(--cream); letter-spacing: .04em;
+  }
+  .badge {
+    font-family: Consolas, monospace; font-size: 11px; letter-spacing: .1em;
+    padding: 1px 7px; border-radius: 0; white-space: nowrap; border: 1px solid;
+  }
+  .badge.ok { background: none; color: var(--ok); border-color: rgba(156,192,160,.45); }
+  .badge.wait { background: none; color: var(--warn); border-color: rgba(217,162,94,.45); }
+  .badge.no { background: none; color: #E8A08E; border-color: rgba(232,160,142,.45); }
+  .login-alt { margin-top: 18px; border-top: 1px solid var(--line-soft); padding-top: 16px; }
+  .email-form { margin-top: 14px; }
+  .email-form .row { display: flex; gap: 10px; align-items: flex-end; }
+  .email-form .row input { flex: 1; }
+  .lock-box {
+    background: none; border: 1px dashed var(--line); border-radius: 0;
+    padding: 44px 20px; text-align: center; font-size: 14px;
+    color: var(--mut); line-height: 2; margin: 10px 0;
+  }
+  .lock-box b {
+    color: var(--gold-soft); display: block; margin-bottom: 10px;
+    font-size: 18px; font-weight: 400; letter-spacing: .14em;
+  }
+  .lock-box button { margin-top: 16px; }
+  .admin-row {
+    display: flex; align-items: center; gap: 11px;
+    padding: 14px 0; border-bottom: 1px solid var(--line-soft); font-size: 14px;
+  }
+  .admin-row:last-child { border-bottom: none; }
+  .admin-row .who { flex: 1; min-width: 0; }
+  .admin-row .who small {
+    display: block; color: var(--dim); font-size: 11.5px;
+    font-family: Consolas, monospace; letter-spacing: .02em;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .admin-empty { color: var(--dim); font-size: 13px; padding: 26px 0; text-align: center; }
+
+  /* ============ 文档导入 ============ */
+  .drop {
+    border: 1px dashed rgba(199,155,91,.5); border-radius: 0;
+    padding: 30px 18px; text-align: center; cursor: pointer;
+    background: transparent; transition: .16s;
+  }
+  .drop:hover, .drop.over {
+    border-color: var(--gold); background: rgba(199,155,91,.07);
+  }
+  .drop.busy { opacity: .5; pointer-events: none; }
+  .drop b {
+    display: block; font-size: 16.5px; font-weight: 400; letter-spacing: .05em; text-wrap: balance;
+    margin-bottom: 7px; color: var(--cream);
+  }
+  .drop span { font-size: 14px; color: var(--dim); }
+
+  .docs { margin-top: 4px; display: flex; flex-direction: column; gap: 0; }
+  .doc {
+    display: flex; align-items: baseline; gap: 16px; padding: 14px 0;
+    border: 0; border-bottom: 1px solid var(--line); border-radius: 0;
+    background: none;
+  }
+  .doc .dn { font-size: 15px; word-break: break-all; letter-spacing: .02em; }
+  .doc .dm {
+    font-size: 12.5px; color: var(--dim); margin-top: 2px;
+    font-family: Consolas, monospace; letter-spacing: .04em;
+  }
+  .doc .dx { margin-left: auto; display: flex; gap: 4px; flex: none; }
+  .doc .del:hover { color: #E8A08E; border-color: transparent; background: none; }
+  .doc-acts { display: flex; align-items: center; gap: 16px; margin-top: 20px; flex-wrap: wrap; }
+  .doc-acts .kv { font-size: 12.5px; color: var(--dim); font-family: Consolas, monospace; }
+  .doc-body {
+    margin-top: 16px; max-height: 320px; overflow: auto;
+    background: rgba(10,22,19,.4); border: 1px solid var(--line); border-radius: 0;
+    padding: 14px 16px; font-size: 13px; white-space: pre-wrap;
+    line-height: 1.85; word-break: break-word; color: var(--mut);
+  }
+  .doc-res { border-top: 1px solid var(--line); margin-top: 26px; padding-top: 20px; }
+  .doc-res h3 {
+    font-size: 15px; font-weight: 400; margin-bottom: 14px;
+    display: flex; align-items: center; gap: 10px; letter-spacing: .2em;
+    color: var(--gold-soft);
+  }
+  .doc-res .md { font-size: 14.5px; color: var(--mut); line-height: 1.9; }
+  .doc-res .md .mdh {
+    font-size: 15.5px; color: var(--cream); letter-spacing: .1em;
+    margin: 22px 0 8px; font-weight: 400;
+    padding-bottom: 6px; border-bottom: 1px solid var(--line-soft);
+  }
+  .doc-res .md .mdh:first-child { margin-top: 0; }
+  .doc-res .md p { margin: 0 0 10px; }
+  .doc-res .md ul, .doc-res .md ol { margin: 8px 0 12px; padding-left: 20px; }
+  .doc-res .md li { margin-bottom: 5px; }
+  .doc-res .md strong { font-weight: 400; color: var(--cream); }
+  .doc-res .md code {
+    font-family: Consolas, monospace; font-size: 13px; color: var(--gold-soft);
+    background: rgba(241,233,216,.09); padding: 1px 5px;
+  }
+  .doc-res .md pre {
+    background: rgba(10,22,19,.55); color: #D8E2D4; padding: 13px 15px;
+    border-left: 1px solid var(--gold); overflow-x: auto; margin: 11px 0;
+    line-height: 1.6;
+  }
+  .doc-res .md pre code { background: none; color: inherit; padding: 0; font-size: 12.5px; }
+  .doc-res .acts { display: flex; gap: 12px; margin-top: 22px; flex-wrap: wrap; }
+  .tag {
+    font-family: Consolas, monospace; font-size: 11px; letter-spacing: .1em;
+    padding: 1px 8px; border-radius: 0; background: none;
+    color: var(--dim); border: 1px solid var(--line);
+  }
+  .tag.new { background: none; color: var(--ok); border-color: rgba(156,192,160,.4); }
+
+  /* ============ 问题记录 ============ */
+  .log-item {
+    border: 0; border-bottom: 1px solid var(--line); border-radius: 0;
+    padding: 22px 0; margin-bottom: 0; background: none;
+    display: block;
+  }
+  .log-head {
+    display: flex; align-items: baseline; gap: 11px; margin-bottom: 8px; flex-wrap: wrap;
+  }
+  .log-title { font-weight: 400; font-size: 17px; letter-spacing: .03em; color: var(--cream); }
+  .tag.open-t { background: none; color: #E8A08E; border-color: rgba(232,160,142,.4); }
+  .tag.done-t { background: none; color: var(--ok); border-color: rgba(156,192,160,.4); }
+  .log-fix { font-size: 14px; color: var(--mut); margin-bottom: 12px; line-height: 1.85; }
+  .log-acts { display: flex; gap: 10px; flex-wrap: wrap; }
+  .log-acts button { font-size: 12.5px; padding: 5px 11px; }
+  .log-item details { font-size: 12.5px; color: var(--dim) !important; margin-bottom: 12px; }
+  .log-item summary {
+    cursor: pointer; letter-spacing: .08em; color: var(--mut);
+    padding: 4px 0; outline: none;
+  }
+  .log-item summary:hover { color: var(--gold); }
+  .note-box { margin-top: 14px; }
+  .note-box textarea { min-height: 70px; font-size: 14px; }
+
+  /* ============ 弹窗 ============ */
+  .head-act { display: flex; justify-content: flex-end; gap: 12px; margin: 22px 0 4px; }
+  .modal-bg {
+    position: fixed; inset: 0; background: rgba(7,17,14,.86); backdrop-filter: blur(2px);
+    display: none; align-items: center; justify-content: center;
+    z-index: 50; padding: 20px;
+  }
+  .modal-bg.on { display: flex; }
+  .modal {
+    background: var(--panel); border: 1px solid var(--gold); border-radius: 0;
+    padding: 28px 30px; width: 100%; max-width: 480px;
+    box-shadow: 0 20px 60px rgba(0,0,0,.5);
+    max-height: 86vh; overflow-y: auto; overflow-x: hidden;
+    position: relative;
+  }
+  .modal:before, .modal:after {
+    content: ""; position: absolute; width: 8px; height: 8px; border: 1px solid var(--gold-soft);
+    pointer-events: none;
+  }
+  .modal:before { left: 0; top: 0; border-right: 0; border-bottom: 0; }
+  .modal:after { right: 0; bottom: 0; border-left: 0; border-top: 0; }
+  .modal textarea, .modal input { resize: none; }
+  .modal h3 {
+    font-size: 18px; font-weight: 400; letter-spacing: .2em;
+    margin-bottom: 16px; color: var(--gold-soft);
+  }
+  .modal .hint { font-size: 13px; color: var(--dim); margin-bottom: 20px; line-height: 1.9; }
+  .modal-acts {
+    display: flex; gap: 12px; justify-content: flex-end; margin-top: 22px;
+  }
+  .toast {
+    position: fixed; left: 50%; bottom: 38px;
+    transform: translate(-50%, 20px);
+    background: var(--deep); color: var(--cream);
+    border: 1px solid var(--gold);
+    padding: 10px 22px; border-radius: 0;
+    font-size: 13.5px; letter-spacing: .1em;
+    opacity: 0; pointer-events: none; transition: .22s; z-index: 60;
+  }
+  .toast.on { opacity: 1; transform: translate(-50%, 0); }
+
+  /* ============ 响应式 ============ */
+  @media (max-width: 900px) {
+    .band { padding: 0 14px; align-items: center; flex-wrap: wrap; }
+    .band .seal { width: 30px; height: 30px; font-size: 10.5px; margin: 11px 0; }
+    .band .year, .band .fan { display: none; }
+    .band nav { overflow-x: auto; margin-left: 10px; flex: 1; -ms-overflow-style: none; }
+    .band nav::-webkit-scrollbar { display: none; }
+    nav button { letter-spacing: .02em; font-size: 12.5px; padding: 17px 7px; white-space: nowrap; }
+    nav button.active:after { left: 7px; right: 7px; }
+    .band nav { margin-left: 6px; }
+    .strip { padding: 4px 14px 6px; gap: 8px; flex-wrap: wrap; }
+    .strip button { font-size: 11.5px; padding: 2px 6px; }
+    .save-state { font-size: 11px; letter-spacing: .04em; }
+    main { padding: 0 18px 100px; }
+    .rule { margin: 30px 0 16px; }
+    h1.page-title { font-size: 23px; line-height: 1.46; letter-spacing: .02em; }
+    .lede { font-size: 13.5px; }
+    .card { padding: 18px 16px; margin-top: 22px; }
+    .row2 { grid-template-columns: 1fr; gap: 0; }
+    .task, .stage-goal, .traps { margin-left: 0; }
+    .task { padding-left: 0; }
+    .chat-top { flex-wrap: wrap; }
+    .chat-tools { margin-left: 0; width: 100%; }
+    .chat-log { height: clamp(190px, 34vh, 320px); }
+    .msg.user .bubble { font-size: 16px; }
+    .auth-name { max-width: 66px; }
+    .log-item { padding: 18px 0; }
+    .modal { padding: 22px 18px; }
+    .causes li { padding-left: 26px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="masthead">
+<header class="band">
+  <div class="seal">課設</div>
+  <div class="year">MMXXVI</div>
+  <svg class="fan" width="42" height="25" viewBox="0 0 44 26" fill="none" stroke="#C79B5B" stroke-width="1" aria-hidden="true">
+    <path d="M2 25L22 2l20 23"/><path d="M8 25L22 8l14 17"/><path d="M14 25L22 14l8 11"/>
+  </svg>
+  <nav>
+    <button class="active" data-view="project">我的课设</button>
+    <button data-view="roadmap">制作路线</button>
+    <button data-view="diag">问题诊断</button>
+    <button data-view="chat">自由提问</button>
+    <button data-view="log">问题记录</button>
+  </nav>
+</header>
+<div class="strip">
+  <div class="save-state" id="saveState">本地保存</div>
+  <button id="btnExport" class="ghost">导出备份</button>
+  <button id="btnImport" class="ghost">导入</button>
+  <div class="auth-box" id="authBox"></div>
+  <input type="file" id="fileInput" accept=".json" style="display:none">
+</div>
+</div>
+
+<main>
+  <!-- 我的课设 -->
+  <section id="view-project" class="active">
+    <div class="rule"><span>第 一 卷 · 课 设</span><i></i></div>
+    <h1 class="page-title" id="pageTitle">我的<em>课设</em></h1>
+    <p class="lede" id="pageLede">把任务书原文贴进来。后面判断做到哪一步，都以它为准。</p>
+
+    <div class="card">
+      <h2>导入设计文档</h2>
+      <p class="hint">把 PPT 或项目书丢进来，自动读出里面的设计思路，一键填进下面的档案。文件在你自己浏览器里解析，不上传。</p>
+      <div class="drop" id="drop">
+        <b>点击选择文件，或直接把文件拖到这里</b>
+        <span>支持 .pptx / .docx / .txt / .md，单个建议 25MB 以内</span>
+      </div>
+      <input type="file" id="docInput" accept=".pptx,.docx,.txt,.md,.markdown" style="display:none" multiple>
+      <div class="docs" id="docList"></div>
+      <div id="docArea"></div>
+      <div class="doc-acts" id="docActs" style="display:none">
+        <button class="primary" id="btnAnalyze">AI 提炼设计思路</button>
+        <span class="kv" id="analyzeTip"></span>
+      </div>
+      <div class="doc-res" id="docRes" style="display:none">
+        <h3>设计思路提炼 <span class="tag new">AI</span></h3>
+        <div class="md" id="docResBody"></div>
+        <div class="acts">
+          <button class="primary" id="btnFill">填入我的课设</button>
+          <button id="btnResCopy">复制全文</button>
+          <button id="btnResClear" class="ghost">清除结果</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>基本信息</h2>
+      <p class="hint">先把任务书里的要求原样贴进来。后面每次遇到问题，它都会作为判断依据。</p>
+      <div class="row2">
+        <label class="field"><span>题目</span><input type="text" id="f-title" placeholder="例：基于 STM32 的数字温度采集与显示系统"></label>
+        <label class="field"><span>课程 / 指导教师</span><input type="text" id="f-course" placeholder="例：单片机原理与应用 / 张老师"></label>
+      </div>
+      <div class="row2">
+        <label class="field"><span>截止日期</span><input type="date" id="f-deadline"></label>
+        <label class="field"><span>当前阶段</span><select id="f-stage"></select></label>
+      </div>
+      <label class="field"><span>任务书要求（原文粘贴）</span><textarea id="f-brief" placeholder="把基本要求、发挥部分、指标要求整段贴进来。这一栏是你后面判断做到哪一步的基准。"></textarea></label>
+      <label class="field"><span>最终要呈现的效果</span><textarea id="f-goal" placeholder="例：实物能实时显示温度，误差不超过 0.5℃；按键可切换上下限报警；答辩时能现场演示降温触发报警。"></textarea></label>
+      <label class="field" style="margin-bottom:0"><span>我的方案（选型、框图思路）</span><textarea id="f-scheme" placeholder="主控、传感器、显示、电源各用了什么，为什么这么选。方案没定就先空着。"></textarea></label>
+    </div>
+  </section>
+
+  <!-- 制作路线 -->
+  <section id="view-roadmap">
+    <div class="rule"><span>第 二 卷 · 路 线</span><i></i></div>
+    <h1 class="page-title">前一级没测通<br><em>就不要接下一级</em></h1>
+    <p class="lede">这是课设返工的头号原因。七个阶段，一段一段过。</p>
+
+    <div class="card" style="padding:17px 24px">
+      <div class="prog-wrap">
+        <span class="kv" style="white-space:nowrap">进度</span>
+        <div class="prog"><i id="progBar"></i></div>
+        <span class="kv" id="progText" style="white-space:nowrap">0 / 0</span>
+      </div>
+    </div>
+    <div id="stageList"></div>
+  </section>
+
+  <!-- 问题诊断 -->
+  <section id="view-diag">
+    <div class="rule"><span>第 三 卷 · 诊 断</span><i></i></div>
+    <h1 class="page-title">先定系统<br><em>再定现象</em></h1>
+    <p class="lede">给的是按可能性排序的原因，每条后面跟一个能当场做的验证动作。</p>
+
+    <div class="card">
+      <h2>系 统 类 别</h2>
+      <div class="chips" id="catChips"></div>
+    </div>
+    <div class="card" id="symCard" style="display:none">
+      <h2 id="symTitle">选择现象</h2>
+      <div class="sym-list" id="symList"></div>
+    </div>
+    <div id="resultArea"></div>
+  </section>
+
+  <!-- 自由提问 -->
+  <section id="view-chat">
+    <div class="rule"><span>第 四 卷 · 提 问</span><i></i></div>
+    <h1 class="page-title">库外的问题<br><em>直接问</em></h1>
+    <p class="lede">会带上你的题目、任务书和已导入的文档。回答按可能性排序，不编参数。</p>
+
+    <div class="card chat-card">
+      <div class="chat-top">
+        <div>
+          <h2>对 话</h2>
+          <p class="hint">勾上背景，回答会按你的题目、任务书和已导入的文档来。</p>
+        </div>
+        <div class="chat-tools">
+          <label class="ctx-toggle"><input type="checkbox" id="useCtx" checked><span>带课设背景</span></label>
+          <select id="modelSel"></select>
+          <button id="btnClearChat" class="ghost">清空</button>
+        </div>
+      </div>
+      <div class="chat-log" id="chatLog"></div>
+      <div class="composer">
+        <textarea id="chatInput" placeholder="例：我的 STM32 采集到的温度值每隔十几秒会跳一下，其他时间都正常，可能是什么原因？"></textarea>
+        <div class="composer-acts">
+          <span class="chat-tip" id="chatTip">Enter 发送 · Shift+Enter 换行</span>
+          <button id="btnStop" class="danger" style="display:none">停止生成</button>
+          <button id="btnSend" class="primary">发送</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 问题记录 -->
+  <section id="view-log">
+    <div class="rule"><span>第 五 卷 · 记 录</span><i></i></div>
+    <h1 class="page-title">踩过的坑<br><em>都记在这里</em></h1>
+    <p class="lede">同类问题再出现时，不用从头想。</p>
+
+    <div class="head-act">
+      <button id="btnNewLog" class="primary">手动记一条</button>
+    </div>
+    <div id="logList"></div>
+  </section>
+</main>
+
+<!-- 保存问题弹窗 -->
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <h3>保存到问题记录</h3>
+    <label class="field"><span>标题</span><input type="text" id="m-title" placeholder="一句话描述问题"></label>
+    <label class="field"><span>我的处理 / 结论</span><textarea id="m-note" placeholder="最后是怎么解决的？或者目前卡在哪？"></textarea></label>
+    <div class="modal-acts">
+      <button id="m-cancel">取消</button>
+      <button id="m-ok" class="primary">保存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 登录弹窗 -->
+<div class="modal-bg" id="loginModal">
+  <div class="modal">
+    <h3>登录</h3>
+    <p class="hint">登录后才能使用「自由提问」——那部分会调用模型、消耗资源点。其余功能不登录也能用。</p>
+    <button id="btnWBLogin" class="primary" style="width:100%">使用 WorkBuddy 登录</button>
+    <div class="login-alt">
+      <button id="btnToggleEmail" class="ghost" style="width:100%">或者用邮箱验证码</button>
+      <div class="email-form" id="emailForm" style="display:none">
+        <label class="field" style="margin-bottom:8px"><span>邮箱</span>
+          <input type="text" id="emailInput" placeholder="you@example.com" autocomplete="email">
+        </label>
+        <div class="row">
+          <input type="text" id="otpInput" placeholder="验证码" autocomplete="one-time-code">
+          <button type="button" id="btnSendCode">获取验证码</button>
+        </div>
+        <button type="button" id="btnEmailLogin" class="primary" style="width:100%;margin-top:10px">登录 / 注册</button>
+      </div>
+    </div>
+    <div class="modal-acts"><button id="loginCancel">取消</button></div>
+  </div>
+</div>
+
+<!-- 审批弹窗 -->
+<div class="modal-bg" id="adminModal">
+  <div class="modal" style="max-width:580px">
+    <h3>用户授权</h3>
+    <p class="hint">通过后，这个人才能使用自由提问。没通过的人只能用本地功能。</p>
+    <div id="adminList"></div>
+    <div class="modal-acts"><button id="adminClose">关闭</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+var WorkBuddyCloud=(()=>{var ie=Object.defineProperty;var _t=Object.getOwnPropertyDescriptor;var Tt=Object.getOwnPropertyNames;var Ot=Object.prototype.hasOwnProperty;var a=(r,e)=>ie(r,"name",{value:e,configurable:!0});var At=(r,e)=>{for(var t in e)ie(r,t,{get:e[t],enumerable:!0})},Rt=(r,e,t,s)=>{if(e&&typeof e=="object"||typeof e=="function")for(let n of Tt(e))!Ot.call(r,n)&&n!==t&&ie(r,n,{get:()=>e[n],enumerable:!(s=_t(e,n))||s.enumerable});return r};var $t=r=>Rt(ie({},"__esModule",{value:!0}),r);var nr={};At(nr,{AuthModule:()=>D,CLOUD_MODULE_PATHS:()=>R,CLOUD_PATH_PREFIX:()=>j,CloudOpenAIError:()=>x,CloudStoragePathError:()=>w,DEFAULT_SIGNED_URL_TTL_SECONDS:()=>ge,LlmModule:()=>M,MAX_SIGNED_URL_TTL_SECONDS:()=>ye,PUBLISHABLE_KEY_HEADER:()=>be,RUNTIME_STORAGE_BUCKET:()=>W,WorkBuddyCloudClient:()=>se,WorkBuddyCloudConfigError:()=>T,WorkBuddyDatabaseModule:()=>J,WorkBuddyStorageBucket:()=>H,WorkBuddyStorageDownload:()=>te,WorkBuddyStorageModule:()=>re,anonymousTokenProvider:()=>oe,createMemoryStorage:()=>ke,createWorkBuddyCloud:()=>vt,getModelCapability:()=>Oe,getModelDisplayName:()=>Te,shouldClearCredentials:()=>Pt});var T=class extends Error{static{a(this,"WorkBuddyCloudConfigError")}constructor(e){super(e),this.name="WorkBuddyCloudConfigError"}};var Ut=/^wbpk_/;function Le(r,e){if(typeof r!="string"||r.trim()==="")throw new T(`${e} is required and must be a non-empty string.`);let t=r.trim(),s;try{s=new URL(t)}catch{throw new T(`${e} must be an absolute URL, received: ${t}`)}if(s.protocol!=="https:"&&s.protocol!=="http:")throw new T(`${e} must use http(s), received protocol: ${s.protocol}`);return t.replace(/\/+$/,"")}a(Le,"normalizeHttpUrl");function It(r){if(r!=null&&r!=="")return Le(r,"endpoint");let e=globalThis.location?.origin;if(typeof e!="string"||e==="")throw new T("endpoint is required outside browsers (no location.origin to fall back to).");return e.replace(/\/+$/,"")}a(It,"resolveEndpoint");function Ct(r){if(typeof r!="string"||r.trim()==="")throw new T("publishableKey is required and must be a non-empty string.");let e=r.trim();if(!Ut.test(e))throw new T('publishableKey must start with "wbpk_".');return e}a(Ct,"normalizePublishableKey");function Lt(r){if(r)return r;if(typeof globalThis.fetch!="function")throw new T("Global fetch is unavailable in this runtime; pass options.fetch explicitly.");return globalThis.fetch.bind(globalThis)}a(Lt,"resolveFetch");function je(r){if(!r||typeof r!="object")throw new T("createWorkBuddyCloud requires publishableKey.");return Object.freeze({endpoint:It(r.endpoint),oauthRelayBaseUrl:r.oauthRelayBaseUrl?Le(r.oauthRelayBaseUrl,"oauthRelayBaseUrl"):"",publishableKey:Ct(r.publishableKey),fetch:Lt(r.fetch)})}a(je,"resolveRuntimeConfig");var be="x-wb-webapp-access-key";function we(r,e){return async(t,s)=>{let n=new Headers(s?.headers);if(n.set(be,r.publishableKey),!n.has("Authorization")){let i=await e();i&&n.set("Authorization",`Bearer ${i}`)}return r.fetch(t,{...s,headers:n})}}a(we,"createCloudFetch");var oe=a(()=>Promise.resolve(void 0),"anonymousTokenProvider");var j="/.cloud",R=Object.freeze({auth:`${j}/auth`,database:`${j}/database/rest`,storage:`${j}/storage`,llm:`${j}/llm`});var jt="workbuddy-cloud.pkce.workbuddy.",Bt="workbuddy-cloud.pkce-done.workbuddy.";function Be(r){let e="";for(let t of r)e+=String.fromCharCode(t);return btoa(e).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"")}a(Be,"base64UrlEncode");function De(){let r=globalThis.crypto;return typeof r?.getRandomValues=="function"&&typeof r?.subtle?.digest=="function"&&typeof globalThis.btoa=="function"}a(De,"hasWebCrypto");function Ne(){let r=new Uint8Array(32);return globalThis.crypto.getRandomValues(r),Be(r)}a(Ne,"createCodeVerifier");async function Me(r){let e=new TextEncoder().encode(r),t=await globalThis.crypto.subtle.digest("SHA-256",e);return Be(new Uint8Array(t))}a(Me,"computeS256Challenge");var ae=class{static{a(this,"WorkBuddyPkceStore")}verifierKey;consumedKey;constructor(e){this.verifierKey=jt+e,this.consumedKey=Bt+e}usable(){let e=this.storage();if(!e)return!1;try{let t=`${this.verifierKey}.probe`;return e.setItem(t,"1"),e.removeItem(t),!0}catch{return!1}}saveVerifier(e){try{let t=this.storage();return t?(t.setItem(this.verifierKey,e),t.removeItem(this.consumedKey),!0):!1}catch{return!1}}readVerifier(){try{return this.storage()?.getItem(this.verifierKey)??null}catch{return null}}clearVerifier(){try{this.storage()?.removeItem(this.verifierKey)}catch{}}markConsumed(e){try{this.storage()?.setItem(this.consumedKey,e)}catch{}}isConsumed(e){try{return!!e&&this.storage()?.getItem(this.consumedKey)===e}catch{return!1}}storage(){try{return globalThis.sessionStorage??null}catch{return null}}};var b={signUp:"/v1/signup",signIn:"/v1/signin",signInWithProvider:"/v1/signin/with/provider",token:"/v1/token",loginWechat:"/v1/login-wechat",loginWechatWeb:"/v1/login-wechat-web",loginWorkBuddy:"/v1/login-workbuddy",loginWorkBuddyMiniProgram:"/v1/login-workbuddy-miniprogram",signOut:"/v1/user/signout",userMe:"/v1/user/me",verification:"/v1/verification",verificationVerify:"/v1/verification/verify",resetPassword:"/v1/reset",sudo:"/v1/user/sudo",userPassword:"/v1/user/password"};function Se(r,e){let t=r??{},s=typeof t.access_token=="string"?t.access_token:"";if(!s)throw Mt("response has no access_token");let n=typeof t.refresh_token=="string"?t.refresh_token:"",i=typeof t.expires_in=="number"?t.expires_in:0;return{accessToken:s,refreshToken:n,expiresAt:e+i*1e3,user:Dt(t)}}a(Se,"parseSession");function Dt(r){let e=r.is_anonymous===!0;return{id:typeof r.sub=="string"?r.sub:"",name:O(r.name),avatarUrl:O(r.avatar_url),isAnonymous:e,raw:r}}a(Dt,"userFromSessionPayload");function Fe(r){let e=r??{},t=typeof e.sub=="string"?e.sub:typeof e.uid=="string"?e.uid:"",s=e.user_metadata??{};return{id:t,email:O(e.email)??O(s.email),phone:O(e.phone_number)??O(e.phone),name:O(e.name),avatarUrl:O(e.avatar_url),isAnonymous:e.is_anonymous===!0||e.scope==="anonymous",raw:e}}a(Fe,"parseUser");function O(r){return typeof r=="string"&&r!==""?r:void 0}a(O,"pickString");function qe(r,e){let t=e??{},s=typeof t.error=="string"?t.error:void 0,n=O(t.error_description)??O(t.message)??O(t.msg)??`HTTP ${r}`;return{kind:Nt(r,s),message:n,status:r,code:s,cause:e}}a(qe,"normalizeHttpError");function Nt(r,e){if(e==="invalid_grant")return"unauthenticated";switch(r){case 400:return"invalid-request";case 401:return"unauthenticated";case 403:return"permission-denied";case 404:return"not-found";case 429:return"rate-limited";case 501:return"unimplemented";case 503:return"backend-unavailable";default:return r>=500?"backend-unavailable":"unknown"}}a(Nt,"errorKind");function K(r){return{kind:"network",message:`request failed before a response was received: ${r instanceof Error?r.message:String(r)}`,status:0,cause:r}}a(K,"normalizeNetworkError");function Mt(r){let e=new Error(`workbuddy-cloud auth: ${r}`);return e.kind="unknown",e.status=0,e}a(Mt,"sessionShapeError");var ce=class{static{a(this,"SessionManager")}store;refresh;emit;isCredentialsRejected;now;inflight=null;signOutEpoch=0;lastFailure=null;constructor(e){this.store=e.store,this.refresh=e.refresh,this.emit=e.emit,this.isCredentialsRejected=e.isCredentialsRejected,this.now=e.now??Date.now}peek(){return this.store.read()}async ensure(){let e=this.store.read();return e?this.isExpiring(e)?e.refreshToken?this.refreshOnce(e):this.abandon():e:null}async forceRefresh(){let e=this.store.read();return e?.refreshToken?this.refreshOnce(e,{ignoreCooldown:!0}):null}commitSignIn(e){return this.lastFailure=null,this.store.write(e),this.emit("SIGNED_IN",e),e}commitUserUpdate(e){return this.store.write(e),this.emit("USER_UPDATED",e),e}clear(){this.signOutEpoch+=1,this.lastFailure=null,this.inflight=null,this.store.clear(),this.emit("SIGNED_OUT",null)}isExpiring(e){return typeof e.expiresAt!="number"?!0:e.expiresAt-this.now()<9e4}refreshOnce(e,t={}){if(this.inflight)return this.inflight;if(!t.ignoreCooldown&&this.inCooldown(e.refreshToken))return Promise.resolve(null);let s=this.doRefresh(e).finally(()=>{this.inflight=null});return this.inflight=s,s}inCooldown(e){let t=this.lastFailure;return t!==null&&t.token===e&&this.now()-t.at<6e4}async doRefresh(e){let t=this.signOutEpoch,s=e.refreshToken,n;try{n=await this.refresh(s)}catch(o){return this.onRefreshFailed(s,o)}if(this.signOutEpoch!==t)return this.store.clear(),null;let i=this.store.read();return i&&i.refreshToken!==s?i:(this.lastFailure=null,this.store.write(n),this.emit("TOKEN_REFRESHED",n),n)}onRefreshFailed(e,t){return this.isCredentialsRejected(t)?this.abandon():(this.lastFailure={token:e,at:this.now()},null)}abandon(){return this.store.clear(),this.lastFailure=null,this.emit("SIGNED_OUT",null),null}};var Ft="workbuddy-cloud.session.";function ke(){let r=new Map;return{getItem:a(e=>r.get(e)??null,"getItem"),setItem:a((e,t)=>{r.set(e,t)},"setItem"),removeItem:a(e=>{r.delete(e)},"removeItem")}}a(ke,"createMemoryStorage");function We(r){if(r)return r;try{let e="__workbuddy_probe__";return globalThis.localStorage.setItem(e,"1"),globalThis.localStorage.removeItem(e),globalThis.localStorage}catch{return ke()}}a(We,"resolveStorage");var ue=class{static{a(this,"SessionStore")}storage;key;constructor(e,t){this.storage=e,this.key=Ft+t}read(){let e;try{e=this.storage.getItem(this.key)}catch{return null}if(!e)return null;try{let t=JSON.parse(e);return qt(t)?t:this.discard()}catch{return this.discard()}}write(e){try{this.storage.setItem(this.key,JSON.stringify(e))}catch{}}clear(){try{this.storage.removeItem(this.key)}catch{}}discard(){return this.clear(),null}};function qt(r){if(!r||typeof r!="object")return!1;let e=r;return typeof e.accessToken=="string"&&e.accessToken!==""&&typeof e.refreshToken=="string"&&typeof e.expiresAt=="number"&&!!e.user&&typeof e.user=="object"}a(qt,"isStoredSession");function B(r,e){let t=r.email??"",s=r.phone??"";return!!t==!!s?{data:null,error:{kind:"invalid-request",message:`${e} requires exactly one of email or phone`,status:0}}:{data:t?{kind:"email",value:t,username:t}:{kind:"phone",value:s,username:Wt(s)},error:null}}a(B,"resolveAuthIdentifier");function Wt(r){let t=r.replace(/\D/g,"");return t.startsWith("0086")?t=t.slice(4):t.startsWith("86")&&t.length===13&&(t=t.slice(2)),/^1\d{10}$/.test(t)?`+86 ${t}`:r}a(Wt,"normalizePhone");var He="wx907c65e5e107ddcf",Ht="subpackages/secondary/oauth-authorize/index";var de=class{static{a(this,"WorkBuddyMiniProgramAuth")}storage;platform;exchange;key;starting;exchanges=new Map;constructor(e,t,s,n){this.storage=t,this.platform=s,this.exchange=n,this.key=`workbuddy-cloud.miniprogram-workbuddy.${e}`}async signIn(e){if(this.starting)return this.starting;let t=this.start(e);this.starting=t;try{return await t}finally{this.starting=void 0}}async start(e){if(typeof e?.redirectPath!="string"||!e.redirectPath.trim())return P("invalid_request","WorkBuddy login requires redirectPath");let t=this.platform.applicationId;if(typeof t!="string"||!t.trim())return P("invalid_request","WorkBuddy login requires publicConfig.workBuddyOAuthClientId");try{let s=this.platform.getEnvVersion?.(),n=await this.platform.createState(),i={state:n,appId:He,expiresAt:Date.now()+6e5},o=JSON.stringify(i);if(this.storage.setItem(this.key,o),this.storage.getItem(this.key)!==o)return P("storage_unavailable","Could not persist WorkBuddy login; sign in again");let c=await this.platform.navigate({appId:He,path:`${Ht}?client_id=${encodeURIComponent(t)}&redirect_uri=${encodeURIComponent(e.redirectPath)}&state=${encodeURIComponent(n)}`+(s?`&envVersion=${s}`:""),envVersion:"release"});return c.error&&this.storage.removeItem(this.key),c}catch(s){return P("miniprogram_login_failed",xe(s))}}async handleCallback(e){let t=e?.referrerInfo,s=Ke(t?.extraData);if(!s||!s.code&&!s.error)return{data:null,error:null};let n=typeof s.state=="string"?this.exchanges.get(s.state):void 0;if(n)return t?.appId===n.appId?n.task:P("invalid_request","WorkBuddy callback does not match the login source");let i;try{i=this.readPending()}catch(c){return P("storage_unavailable",xe(c))}if(!i)return{data:null,error:null};if(typeof s.state!="string"||!s.state)return P("invalid_request","WorkBuddy callback requires state");if(t?.appId!==i.appId||s.state!==i.state)return P("invalid_request","WorkBuddy callback does not match the login source or state");if(!(typeof s.code=="string"&&s.code)&&!(typeof s.error=="string"&&s.error))return P("invalid_request","WorkBuddy callback has no authorization code");if(!s.error&&(typeof s.redirect_uri!="string"||!s.redirect_uri.trim()))return P("invalid_request","WorkBuddy callback requires redirect_uri");try{if(this.storage.removeItem(this.key),this.storage.getItem(this.key)!==null)return P("storage_unavailable","Could not consume WorkBuddy login; sign in again")}catch(c){return P("storage_unavailable",xe(c))}if(i.expiresAt<=Date.now())return P("invalid_grant","WorkBuddy login expired; sign in again","unauthenticated");if(s.error)return P(String(s.error),typeof s.error_description=="string"?s.error_description:"WorkBuddy authorization was not completed","permission-denied");let o=this.exchange({code:s.code,state:i.state,shortlink:s.redirect_uri});this.exchanges.set(i.state,{appId:i.appId,task:o});try{return await o}finally{this.exchanges.delete(i.state)}}readPending(){let e=this.storage.getItem(this.key);if(!e)return null;let t=Ke(JSON.parse(e));if(!t||typeof t.state!="string"||typeof t.appId!="string"||typeof t.expiresAt!="number")throw new Error("Invalid saved WorkBuddy login; sign in again");return t}};function Ke(r){return r!==null&&typeof r=="object"&&!Array.isArray(r)?r:null}a(Ke,"record");function P(r,e,t="invalid-request"){return{data:null,error:{kind:t,code:r,message:e,status:0}}}a(P,"failure");function xe(r){return r instanceof Error?r.message:String(r)}a(xe,"describe");var Ge=200;function Je(r,e){let t=Array.from(r);return t.length<=e?r:`${t.slice(0,e).join("")}\u2026`}a(Je,"truncateMessage");function Ee(r){let e=r.get("error");if(!e)return null;let t=r.get("error_description"),s=t?`oauth provider rejected the request: ${e}: ${t}`:`oauth provider rejected the request: ${e}`;return Je(s,Ge)}a(Ee,"oauthProviderRejectMessage");var D=class{static{a(this,"AuthModule")}fetch;baseUrl;sessions;storage;oauthRelayBaseUrl;workBuddyPkce;workBuddyMiniProgram;workBuddyExchanges=new Map;listeners=new Map;nextListenerId=1;constructor(e,t,s={}){this.fetch=t,this.baseUrl=`${e.endpoint}${R.auth}`,this.oauthRelayBaseUrl=e.oauthRelayBaseUrl,this.storage=We(s.storage),this.workBuddyPkce=new ae(e.publishableKey),this.sessions=new ce({store:new ue(this.storage,e.publishableKey),refresh:a(n=>this.exchangeRefreshHandle(n),"refresh"),emit:a((n,i)=>this.notify(n,i),"emit"),isCredentialsRejected:a(n=>le(n)&&Ve(n),"isCredentialsRejected")}),s.workBuddyMiniProgram&&(this.workBuddyMiniProgram=new de(e.publishableKey,this.storage,s.workBuddyMiniProgram,n=>this.postForSession(b.loginWorkBuddyMiniProgram,n)))}async getAccessToken(){return(await this.sessions.ensure())?.accessToken}async signInWithWorkBuddyMiniProgram(e){return this.workBuddyMiniProgram?this.workBuddyMiniProgram.signIn(e):h({kind:"unimplemented",status:0,message:"Use createMiniProgramWorkBuddyCloud for WorkBuddy mini program login"})}async handleWorkBuddyMiniProgramCallback(e){return this.workBuddyMiniProgram?this.workBuddyMiniProgram.handleCallback(e):h({kind:"unimplemented",status:0,message:"Use createMiniProgramWorkBuddyCloud for WorkBuddy mini program login"})}async signInWithPassword(e){if(!e.password)return h(p("signInWithPassword requires a password"));let t=B(e,"signInWithPassword");return t.error?h(t.error):this.postForSession(b.signIn,{username:t.data.username,password:e.password})}async signInWithWechat(e,t){return e?t?this.postForSession(b.loginWechat,{code:e,appid:t}):h(p("signInWithWechat requires appid")):h(p("signInWithWechat requires code"))}async signUp(e){let t=B(e,"signUp");if(t.error)return h(t.error);if(!e.verificationToken)return h(p("signUp requires a verificationToken; run sendOtp + verifyOtp first (the provider rejects username+password-only signup)"));let s={verification_token:e.verificationToken};return t.data.kind==="phone"?s.phone_number=t.data.username:s.email=t.data.username,e.password&&(s.password=e.password),this.postForSession(b.signUp,s)}async sendOtp(e){let t=B(e,"sendOtp");if(t.error)return h(t.error);let s={};t.data.kind==="phone"?(s.phone_number=t.data.username,s.target="ANY"):(s.email=t.data.username,s.usage="email",e.emailRedirectTo&&(s.email_redirect_to=e.emailRedirectTo));let n=await this.request(b.verification,{method:"POST",body:s});if(n.error)return h(n.error);let i=n.data??{},o=typeof i.verification_id=="string"?i.verification_id:"";return o?S({verificationId:o,isExistingUser:i.is_user===!0}):h(p("provider returned no verification_id"))}async signInWithOtp(e){let t=B(e,"signInWithOtp");if(t.error)return h(t.error);let s=await this.sendOtp(e);if(s.error)return h(s.error);let{verificationId:n,isExistingUser:i}=s.data,o=t.data.kind==="phone"?{phone:t.data.username}:{email:t.data.username};return S({verificationId:n,isExistingUser:i,isUser:i,verify:a(({token:c,password:u})=>this.verifyOtp({verificationId:n,token:c,...o,isExistingUser:i,password:u}),"verify")})}async verifyOtp(e){let t=B(e,"verifyOtp");if(t.error)return h(t.error);if(!e.verificationId||!e.token)return h(p("verifyOtp requires verificationId and token"));let s=await this.request(b.verificationVerify,{method:"POST",body:{verification_id:e.verificationId,verification_code:e.token}});if(s.error)return h(s.error);let n=s.data??{},i=typeof n.verification_token=="string"?n.verification_token:"";if(!i)return h(p("provider returned no verification_token"));if(e.isExistingUser)return this.postForSession(b.signIn,{username:t.data.username,verification_token:i});let o=t.data.kind==="phone"?{phone:t.data.value,password:e.password}:{email:t.data.value,password:e.password};return this.signUp({...o,verificationToken:i})}async signInWithOAuth(e){if(!this.oauthRelayBaseUrl)return h(p("signInWithOAuth requires oauthRelayBaseUrl"));if(e.provider!=="google"&&e.provider!=="wechat"&&e.provider!=="workbuddy")return h(p("\u5F53\u524D SDK \u4E0D\u652F\u6301\u8BE5\u767B\u5F55\u65B9\u5F0F\uFF0C\u8BF7\u68C0\u67E5 SDK \u7248\u672C\u4E0E\u767B\u5F55\u914D\u7F6E\u3002"));let t=e.redirectTo??zt();return t?this.startRelayOAuth(e,t):h(p("signInWithOAuth requires redirectTo outside a browser environment"))}parseCallbackQuery(e){try{let t=/^https?:\/\//i.test(e)?new URL(e).search:e;return S(new URLSearchParams(t))}catch{return h(p("oauth callback URL is invalid"))}}async handleOAuthCallback(e){let t=this.parseCallbackQuery(e??ve());if(t.error||!t.data)return h(t.error??p("oauth callback URL is invalid"));let s=t.data,n=Ee(s);if(n)return h({kind:"unauthenticated",message:n,status:0});let i=s.get("code");if(!i)return S(null);let o=s.get("state")??"";if(!o)return h(p("oauth callback requires state"));let c=s.get("provider_id");if(c!=="custom-oauth")return h(p("oauth callback requires provider_id=custom-oauth"));let u={provider_id:c,provider_code:i,state:o,provider_params:{state:o}};return this.postForSession(b.signInWithProvider,u)}async handleWechatWebCallback(e){let t=this.parseCallbackQuery(e??ve());if(t.error||!t.data)return h(t.error??p("oauth callback URL is invalid"));let s=t.data,n=Ee(s);if(n)return h({kind:"unauthenticated",message:n,status:0});let i=s.get("code");if(!i)return S(null);let o=s.get("state")??"";if(!o)return h(p("oauth callback requires state"));let c=s.get("provider");return c&&c!=="wechat"?h(p("wechat callback requires provider=wechat")):s.get("provider_id")==="custom-oauth"?h(p("wechat callback must not use provider_id=custom-oauth")):this.postForSession(b.loginWechatWeb,{code:i,state:o})}async handleWorkBuddyCallback(e){let t=this.parseCallbackQuery(e??ve());if(t.error||!t.data)return h(t.error??p("oauth callback URL is invalid"));let s=t.data,n=s.get("provider");if(n&&n!=="workbuddy")return S(null);let i=Ee(s);if(i)return this.workBuddyPkce.clearVerifier(),h({kind:"unauthenticated",message:i,status:0});let o=s.get("code");if(!o)return S(null);let c=s.get("state")??"";if(!c)return h(p("workbuddy callback requires state"));if(s.get("provider_id")==="custom-oauth")return h(p("workbuddy callback must not use provider_id=custom-oauth"));if(this.workBuddyPkce.isConsumed(c))return S(null);let u=this.workBuddyExchanges.get(c);if(u)return u;let d=this.workBuddyPkce.readVerifier();if(!d)return h(p("workbuddy callback has no local PKCE verifier; sign in again in this tab"));this.workBuddyPkce.clearVerifier();let l=this.exchangeWorkBuddyCode(o,c,d);this.workBuddyExchanges.set(c,l);try{return await l}finally{this.workBuddyExchanges.delete(c)}}async exchangeWorkBuddyCode(e,t,s){let n=await this.postForSession(b.loginWorkBuddy,{code:e,state:t,code_verifier:s});return n.data&&this.workBuddyPkce.markConsumed(t),n}async resetPasswordForEmail(e){if(!e)return h(p("resetPasswordForEmail requires email"));let t=await this.request(b.verification,{method:"POST",body:{email:e,usage:"PASSWORD_RESET",target:"USER"}});if(t.error)return h(t.error);let s=t.data??{},n=typeof s.verification_id=="string"?s.verification_id:"";return n?S({updateUser:a(async({nonce:i,password:o})=>{let c=await this.request(b.verificationVerify,{method:"POST",body:{verification_id:n,verification_code:i}});if(c.error)return h(c.error);let u=c.data??{},d=typeof u.verification_token=="string"?u.verification_token:"";if(!d)return h(p("provider returned no verification_token"));let l=await this.request(b.resetPassword,{method:"POST",body:{email:e,new_password:o,verification_token:d}});if(l.error)return h(l.error);let f=await this.signInWithPassword({email:e,password:o});return f.error||this.notify("PASSWORD_RECOVERY",f.data),f},"updateUser")}):h(p("provider returned no verification_id"))}async resetPasswordForOld(e){let t=await this.getAccessToken();if(!t)return h({kind:"unauthenticated",message:"no active session",status:0});let s=await this.request(b.sudo,{method:"POST",token:t,body:{password:e.oldPassword}});if(s.error)return h(s.error);let n=s.data??{},i=typeof n.sudo_token=="string"?n.sudo_token:"";if(!i)return h(p("provider returned no sudo_token"));let o=await this.request(b.userPassword,{method:"PATCH",token:t,body:{sudo_token:i,new_password:e.newPassword}});if(o.error)return h(o.error);let c=await this.getSession();return c.data?(this.notify("USER_UPDATED",c.data),S(c.data)):h(c.error??{kind:"unauthenticated",message:"no active session",status:0})}async getSession(){try{return S(await this.sessions.ensure())}catch(e){return h(le(e)?e:K(e))}}async refreshSession(){try{return S(await this.sessions.forceRefresh())}catch(e){return h(le(e)?e:K(e))}}async getUser(){let e=await this.getAccessToken();if(!e)return h({kind:"unauthenticated",message:"no active session",status:0});let t=await this.request(b.userMe,{method:"GET",token:e});return t.error?(Ve(t.error)&&this.sessions.clear(),h(t.error)):S(Fe(t.data))}async signOut(){let e=this.sessions.peek();return e?.accessToken&&await this.request(b.signOut,{method:"POST",body:{},token:e.accessToken}),this.sessions.clear(),S(null)}onAuthStateChange(e){let t=this.nextListenerId++;return this.listeners.set(t,e),ze(e,"INITIAL_SESSION",this.sessions.peek()),()=>{this.listeners.delete(t)}}async startRelayOAuth(e,t){let s;try{s=new URL(t)}catch{return h(p("signInWithOAuth requires an absolute redirectTo URL"))}let n=new URL(`${this.oauthRelayBaseUrl}/authorize`);if(n.searchParams.set("provider",e.provider),n.searchParams.set("callback_url",s.toString()),e.provider==="workbuddy"){let i=await this.createWorkBuddyProof();if(i.error||!i.data)return h(i.error??p("signInWithOAuth could not create PKCE"));n.searchParams.set("code_challenge",i.data),n.searchParams.set("code_challenge_method","S256")}return S({url:n.toString()})}async createWorkBuddyProof(){if(!De())return h(p("workbuddy sign-in requires WebCrypto; it is unavailable in this runtime (an insecure http:// origin disables it \u2014 serve the app over https)"));if(!this.workBuddyPkce.usable())return h(p("workbuddy sign-in requires sessionStorage to keep the PKCE verifier across the redirect; it is unavailable in this runtime"));let e,t;try{e=Ne(),t=await Me(e)}catch(s){return h(p(`workbuddy sign-in could not create a PKCE proof: ${Kt(s)}`))}return this.workBuddyPkce.saveVerifier(e)?S(t):h(p("workbuddy sign-in could not persist the PKCE verifier"))}async exchangeRefreshHandle(e){let t=await this.request(b.token,{method:"POST",body:{grant_type:"refresh_token",refresh_token:e}});if(t.error)throw t.error;return Se(t.data,Date.now())}async postForSession(e,t,s={}){let n=await this.request(e,{method:"POST",body:t,headers:s.headers});if(n.error)return h(n.error);try{return S(this.sessions.commitSignIn(Se(n.data,Date.now())))}catch(i){return h(le(i)?i:K(i))}}async request(e,t){let s={...t.headers};t.body!==void 0&&(s["Content-Type"]="application/json"),t.token&&(s.Authorization=`Bearer ${t.token}`);let n;try{n=await this.fetch(this.baseUrl+e,{method:t.method,headers:s,body:t.body===void 0?void 0:JSON.stringify(t.body)})}catch(o){return h(K(o))}let i=await Vt(n);return n.ok?S(i):h(qe(n.status,i))}notify(e,t){for(let s of this.listeners.values())ze(s,e,t)}};function S(r){return{data:r,error:null}}a(S,"ok");function h(r){return{data:null,error:r}}a(h,"fail");function p(r){return{kind:"invalid-request",message:r,status:0}}a(p,"badRequest");function Kt(r){return Je(r instanceof Error?r.message:String(r),Ge)}a(Kt,"describeError");function le(r){return!!r&&typeof r=="object"&&typeof r.kind=="string"}a(le,"isCloudError");function Ve(r){return r.kind==="unauthenticated"||r.code==="invalid_grant"}a(Ve,"rejectedCredentials");async function Vt(r){let e=await r.text();if(!e)return null;try{return JSON.parse(e)}catch{return{message:e}}}a(Vt,"readBody");function ze(r,e,t){try{r(e,t)}catch{}}a(ze,"safeInvoke");function zt(){let r=globalThis.location;return r?r.origin+r.pathname:""}a(zt,"currentPageUrl");function ve(){return globalThis.location?.search??""}a(ve,"currentPageSearch");var Pe=a(r=>Math.min(1e3*2**r,3e4),"getRetryDelay"),Ye=[520,503],_e=["GET","HEAD","OPTIONS"];var I=class extends Error{static{a(this,"PostgrestError")}details;hint;code;constructor(e){super(e.message),this.name="PostgrestError",this.details=e.details,this.hint=e.hint,this.code=e.code}toJSON(){return{name:this.name,message:this.message,details:this.details,hint:this.hint,code:this.code}}};function Xe(r,e){return new Promise(t=>{if(e?.aborted){t();return}let s=setTimeout(()=>{e?.removeEventListener("abort",n),t()},r);function n(){clearTimeout(s),t()}a(n,"onAbort"),e?.addEventListener("abort",n)})}a(Xe,"sleep");function Gt(r,e,t,s){return!(!s||t>=3||!_e.includes(r)||!Ye.includes(e))}a(Gt,"shouldRetry");var V=class{static{a(this,"PostgrestBuilder")}method;url;headers;schema;body;shouldThrowOnError=!1;signal;fetch;isMaybeSingle;shouldStripNulls;urlLengthLimit;retryEnabled=!0;constructor(e){this.method=e.method,this.url=e.url,this.headers=new Headers(e.headers),this.schema=e.schema,this.body=e.body,this.shouldThrowOnError=e.shouldThrowOnError??!1,this.signal=e.signal,this.isMaybeSingle=e.isMaybeSingle??!1,this.shouldStripNulls=e.shouldStripNulls??!1,this.urlLengthLimit=e.urlLengthLimit??8e3,this.retryEnabled=e.retry??!0,e.fetch?this.fetch=e.fetch:this.fetch=fetch}throwOnError(){return this.shouldThrowOnError=!0,this}stripNulls(){if(this.headers.get("Accept")==="text/csv")throw new Error("stripNulls() cannot be used with csv()");return this.shouldStripNulls=!0,this}setHeader(e,t){return this.headers=new Headers(this.headers),this.headers.set(e,t),this}retry(e){return this.retryEnabled=e,this}then(e,t){if(this.schema===void 0||(["GET","HEAD"].includes(this.method)?this.headers.set("Accept-Profile",this.schema):this.headers.set("Content-Profile",this.schema)),this.method!=="GET"&&this.method!=="HEAD"&&this.headers.set("Content-Type","application/json"),this.shouldStripNulls){let o=this.headers.get("Accept");o==="application/vnd.pgrst.object+json"?this.headers.set("Accept","application/vnd.pgrst.object+json;nulls=stripped"):(!o||o==="application/json")&&this.headers.set("Accept","application/vnd.pgrst.array+json;nulls=stripped")}let s=this.fetch,i=a(async()=>{let o=0;for(;;){let c={};this.headers.forEach((d,l)=>{c[l]=d}),o>0&&(c["X-Retry-Count"]=String(o));let u;try{u=await s(this.url.toString(),{method:this.method,headers:c,body:JSON.stringify(this.body,(d,l)=>typeof l=="bigint"?l.toString():l),signal:this.signal})}catch(d){if(d?.name==="AbortError"||d?.code==="ABORT_ERR"||!_e.includes(this.method))throw d;if(this.retryEnabled&&o<3){let l=Pe(o);o++,await Xe(l,this.signal);continue}throw d}if(Gt(this.method,u.status,o,this.retryEnabled)){let d=u.headers?.get("Retry-After")??null,l=d!==null?Math.max(0,parseInt(d,10)||0)*1e3:Pe(o);await u.text(),o++,await Xe(l,this.signal);continue}return await this.processResponse(u)}},"executeWithRetry")();return this.shouldThrowOnError||(i=i.catch(o=>{let c="",u="",d="",l=o?.cause;if(l){let g=l?.message??"",y=l?.code??"";c=`${o?.name??"FetchError"}: ${o?.message}`,c+=`
+
+Caused by: ${l?.name??"Error"}: ${g}`,y&&(c+=` (${y})`),l?.stack&&(c+=`
+${l.stack}`)}else c=o?.stack??"";let f=this.url.toString().length;return o?.name==="AbortError"||o?.code==="ABORT_ERR"?(d="",u="Request was aborted (timeout or manual cancellation)",f>this.urlLengthLimit&&(u+=`. Note: Your request URL is ${f} characters, which may exceed server limits. If selecting many fields, consider using views. If filtering with large arrays (e.g., .in('id', [many IDs])), consider using an RPC function to pass values server-side.`)):(l?.name==="HeadersOverflowError"||l?.code==="UND_ERR_HEADERS_OVERFLOW")&&(d="",u="HTTP headers exceeded server limits (typically 16KB)",f>this.urlLengthLimit&&(u+=`. Your request URL is ${f} characters. If selecting many fields, consider using views. If filtering with large arrays (e.g., .in('id', [200+ IDs])), consider using an RPC function instead.`)),{success:!1,error:{message:`${o?.name??"FetchError"}: ${o?.message}`,details:c,hint:u,code:d},data:null,count:null,status:0,statusText:""}})),i.then(e,t)}async processResponse(e){let t=null,s=null,n=null,i=e.status,o=e.statusText;if(e.ok){if(this.method!=="HEAD"){let d=await e.text();if(d!=="")if(this.headers.get("Accept")==="text/csv")s=d;else if(this.headers.get("Accept")&&this.headers.get("Accept")?.includes("application/vnd.pgrst.plan+text"))s=d;else try{s=JSON.parse(d)}catch{if(t={message:d},s=null,this.shouldThrowOnError)throw new I({message:d,details:"",hint:"",code:""})}}let c=this.headers.get("Prefer")?.match(/count=(exact|planned|estimated)/),u=e.headers.get("content-range")?.split("/");if(c&&u&&u.length>1&&(n=parseInt(u[1])),this.isMaybeSingle&&Array.isArray(s))if(s.length>1){if(t={code:"PGRST116",details:`Results contain ${s.length} rows, application/vnd.pgrst.object+json requires 1 row`,hint:null,message:"JSON object requested, multiple (or no) rows returned"},s=null,n=null,i=406,o="Not Acceptable",this.shouldThrowOnError)throw new I({...t,hint:t.hint??""})}else s.length===1?s=s[0]:s=null}else{let c=await e.text();try{t=JSON.parse(c),Array.isArray(t)&&e.status===404&&(s=[],t=null,i=200,o="OK")}catch{e.status===404&&c===""?(i=204,o="No Content"):t={message:c}}if(t&&this.shouldThrowOnError)throw new I(t)}return{success:t===null,error:t,data:s,count:n,status:i,statusText:o}}returns(){return this}overrideTypes(){return this}};var z=class extends V{static{a(this,"PostgrestTransformBuilder")}throwOnError(){return super.throwOnError()}select(e){let t=!1,s=(e??"*").split("").map(n=>/\s/.test(n)&&!t?"":(n==='"'&&(t=!t),n)).join("");return this.url.searchParams.set("select",s),this.headers.append("Prefer","return=representation"),this}order(e,{ascending:t=!0,nullsFirst:s,foreignTable:n,referencedTable:i=n}={}){let o=i?`${i}.order`:"order",c=this.url.searchParams.get(o);return this.url.searchParams.set(o,`${c?`${c},`:""}${e}.${t?"asc":"desc"}${s===void 0?"":s?".nullsfirst":".nullslast"}`),this}limit(e,{foreignTable:t,referencedTable:s=t}={}){let n=typeof s>"u"?"limit":`${s}.limit`;return this.url.searchParams.set(n,`${e}`),this}range(e,t,{foreignTable:s,referencedTable:n=s}={}){let i=typeof n>"u"?"offset":`${n}.offset`,o=typeof n>"u"?"limit":`${n}.limit`;return this.url.searchParams.set(i,`${e}`),this.url.searchParams.set(o,`${t-e+1}`),this}abortSignal(e){return this.signal=e,this}single(){return this.headers.set("Accept","application/vnd.pgrst.object+json"),this}maybeSingle(){return this.isMaybeSingle=!0,this}csv(){return this.headers.set("Accept","text/csv"),this}geojson(){return this.headers.set("Accept","application/geo+json"),this}explain({analyze:e=!1,verbose:t=!1,settings:s=!1,buffers:n=!1,wal:i=!1,format:o="text"}={}){let c=[e?"analyze":null,t?"verbose":null,s?"settings":null,n?"buffers":null,i?"wal":null].filter(Boolean).join("|"),u=this.headers.get("Accept")??"application/json";return this.headers.set("Accept",`application/vnd.pgrst.plan+${o}; for="${u}"; options=${c};`),o==="json"?this:this}rollback(){return this.headers.append("Prefer","tx=rollback"),this}returns(){return this}maxAffected(e){return this.headers.append("Prefer","handling=strict"),this.headers.append("Prefer",`max-affected=${e}`),this}};var Ze=new RegExp("[,()]"),A=class extends z{static{a(this,"PostgrestFilterBuilder")}throwOnError(){return super.throwOnError()}eq(e,t){return this.url.searchParams.append(e,`eq.${t}`),this}neq(e,t){return this.url.searchParams.append(e,`neq.${t}`),this}gt(e,t){return this.url.searchParams.append(e,`gt.${t}`),this}gte(e,t){return this.url.searchParams.append(e,`gte.${t}`),this}lt(e,t){return this.url.searchParams.append(e,`lt.${t}`),this}lte(e,t){return this.url.searchParams.append(e,`lte.${t}`),this}like(e,t){return this.url.searchParams.append(e,`like.${t}`),this}likeAllOf(e,t){return this.url.searchParams.append(e,`like(all).{${t.join(",")}}`),this}likeAnyOf(e,t){return this.url.searchParams.append(e,`like(any).{${t.join(",")}}`),this}ilike(e,t){return this.url.searchParams.append(e,`ilike.${t}`),this}ilikeAllOf(e,t){return this.url.searchParams.append(e,`ilike(all).{${t.join(",")}}`),this}ilikeAnyOf(e,t){return this.url.searchParams.append(e,`ilike(any).{${t.join(",")}}`),this}regexMatch(e,t){return this.url.searchParams.append(e,`match.${t}`),this}regexIMatch(e,t){return this.url.searchParams.append(e,`imatch.${t}`),this}is(e,t){return this.url.searchParams.append(e,`is.${t}`),this}isDistinct(e,t){return this.url.searchParams.append(e,`isdistinct.${t}`),this}in(e,t){let s=Array.from(new Set(t)).map(n=>typeof n=="string"&&Ze.test(n)?`"${n}"`:`${n}`).join(",");return this.url.searchParams.append(e,`in.(${s})`),this}notIn(e,t){let s=Array.from(new Set(t)).map(n=>typeof n=="string"&&Ze.test(n)?`"${n}"`:`${n}`).join(",");return this.url.searchParams.append(e,`not.in.(${s})`),this}contains(e,t){return typeof t=="string"?this.url.searchParams.append(e,`cs.${t}`):Array.isArray(t)?this.url.searchParams.append(e,`cs.{${t.join(",")}}`):this.url.searchParams.append(e,`cs.${JSON.stringify(t)}`),this}containedBy(e,t){return typeof t=="string"?this.url.searchParams.append(e,`cd.${t}`):Array.isArray(t)?this.url.searchParams.append(e,`cd.{${t.join(",")}}`):this.url.searchParams.append(e,`cd.${JSON.stringify(t)}`),this}rangeGt(e,t){return this.url.searchParams.append(e,`sr.${t}`),this}rangeGte(e,t){return this.url.searchParams.append(e,`nxl.${t}`),this}rangeLt(e,t){return this.url.searchParams.append(e,`sl.${t}`),this}rangeLte(e,t){return this.url.searchParams.append(e,`nxr.${t}`),this}rangeAdjacent(e,t){return this.url.searchParams.append(e,`adj.${t}`),this}overlaps(e,t){return typeof t=="string"?this.url.searchParams.append(e,`ov.${t}`):this.url.searchParams.append(e,`ov.{${t.join(",")}}`),this}textSearch(e,t,{config:s,type:n}={}){let i="";n==="plain"?i="pl":n==="phrase"?i="ph":n==="websearch"&&(i="w");let o=s===void 0?"":`(${s})`;return this.url.searchParams.append(e,`${i}fts${o}.${t}`),this}match(e){return Object.entries(e).filter(([t,s])=>s!==void 0).forEach(([t,s])=>{this.url.searchParams.append(t,`eq.${s}`)}),this}not(e,t,s){return this.url.searchParams.append(e,`not.${t}.${s}`),this}or(e,{foreignTable:t,referencedTable:s=t}={}){let n=s?`${s}.or`:"or";return this.url.searchParams.append(n,`(${e})`),this}filter(e,t,s){return this.url.searchParams.append(e,`${t}.${s}`),this}};var G=class{static{a(this,"PostgrestQueryBuilder")}url;headers;schema;signal;fetch;urlLengthLimit;retry;constructor(e,{headers:t={},schema:s,fetch:n,urlLengthLimit:i=8e3,retry:o}){this.url=e,this.headers=new Headers(t),this.schema=s,this.fetch=n,this.urlLengthLimit=i,this.retry=o}cloneRequestState(){return{url:new URL(this.url.toString()),headers:new Headers(this.headers)}}select(e,t){let{head:s=!1,count:n}=t??{},i=s?"HEAD":"GET",o=!1,c=(e??"*").split("").map(l=>/\s/.test(l)&&!o?"":(l==='"'&&(o=!o),l)).join(""),{url:u,headers:d}=this.cloneRequestState();return u.searchParams.set("select",c),n&&d.append("Prefer",`count=${n}`),new A({method:i,url:u,headers:d,schema:this.schema,fetch:this.fetch,urlLengthLimit:this.urlLengthLimit,retry:this.retry})}insert(e,{count:t,defaultToNull:s=!0}={}){let n="POST",{url:i,headers:o}=this.cloneRequestState();if(t&&o.append("Prefer",`count=${t}`),s||o.append("Prefer","missing=default"),Array.isArray(e)){let c=e.reduce((u,d)=>u.concat(Object.keys(d)),[]);if(c.length>0){let u=[...new Set(c)].map(d=>`"${d}"`);i.searchParams.set("columns",u.join(","))}}return new A({method:n,url:i,headers:o,schema:this.schema,body:e,fetch:this.fetch??fetch,urlLengthLimit:this.urlLengthLimit,retry:this.retry})}upsert(e,{onConflict:t,ignoreDuplicates:s=!1,count:n,defaultToNull:i=!0}={}){let o="POST",{url:c,headers:u}=this.cloneRequestState();if(u.append("Prefer",`resolution=${s?"ignore":"merge"}-duplicates`),t!==void 0&&c.searchParams.set("on_conflict",t),n&&u.append("Prefer",`count=${n}`),i||u.append("Prefer","missing=default"),Array.isArray(e)){let d=e.reduce((l,f)=>l.concat(Object.keys(f)),[]);if(d.length>0){let l=[...new Set(d)].map(f=>`"${f}"`);c.searchParams.set("columns",l.join(","))}}return new A({method:o,url:c,headers:u,schema:this.schema,body:e,fetch:this.fetch??fetch,urlLengthLimit:this.urlLengthLimit,retry:this.retry})}update(e,{count:t}={}){let s="PATCH",{url:n,headers:i}=this.cloneRequestState();return t&&i.append("Prefer",`count=${t}`),new A({method:s,url:n,headers:i,schema:this.schema,body:e,fetch:this.fetch??fetch,urlLengthLimit:this.urlLengthLimit,retry:this.retry})}delete({count:e}={}){let t="DELETE",{url:s,headers:n}=this.cloneRequestState();return e&&n.append("Prefer",`count=${e}`),new A({method:t,url:s,headers:n,schema:this.schema,fetch:this.fetch??fetch,urlLengthLimit:this.urlLengthLimit,retry:this.retry})}};var N=class r{static{a(this,"PostgrestClient")}url;headers;schemaName;fetch;urlLengthLimit;retry;constructor(e,{headers:t={},schema:s,fetch:n,timeout:i,urlLengthLimit:o=8e3,retry:c}={}){this.url=e,this.headers=new Headers(t),this.schemaName=s,this.urlLengthLimit=o;let u=n??globalThis.fetch;i!==void 0&&i>0?this.fetch=(d,l)=>{let f=new AbortController,g=setTimeout(()=>f.abort(),i),y=l?.signal;if(y){if(y.aborted)return clearTimeout(g),u(d,l);let ne=a(()=>{clearTimeout(g),f.abort()},"abortHandler");return y.addEventListener("abort",ne,{once:!0}),u(d,{...l,signal:f.signal}).finally(()=>{clearTimeout(g),y.removeEventListener("abort",ne)})}return u(d,{...l,signal:f.signal}).finally(()=>clearTimeout(g))}:this.fetch=u,this.retry=c}from(e){if(!e||typeof e!="string"||e.trim()==="")throw new Error("Invalid relation name: relation must be a non-empty string.");let t=new URL(`${this.url}/${e}`);return new G(t,{headers:new Headers(this.headers),schema:this.schemaName,fetch:this.fetch,urlLengthLimit:this.urlLengthLimit,retry:this.retry})}schema(e){return new r(this.url,{headers:this.headers,schema:e,fetch:this.fetch,urlLengthLimit:this.urlLengthLimit,retry:this.retry})}rpc(e,t={},{head:s=!1,get:n=!1,count:i}={}){let o,c=new URL(`${this.url}/rpc/${e}`),u,d=a(g=>g!==null&&typeof g=="object"&&(!Array.isArray(g)||g.some(d)),"_isObject"),l=s&&Object.values(t).some(d);l?(o="POST",u=t):s||n?(o=s?"HEAD":"GET",Object.entries(t).filter(([g,y])=>y!==void 0).map(([g,y])=>[g,Array.isArray(y)?`{${y.join(",")}}`:`${y}`]).forEach(([g,y])=>{c.searchParams.append(g,y)})):(o="POST",u=t);let f=new Headers(this.headers);return l?f.set("Prefer",i?`count=${i},return=minimal`:"return=minimal"):i&&f.set("Prefer",`count=${i}`),new A({method:o,url:c,headers:f,schema:this.schemaName,body:u,fetch:this.fetch??fetch,urlLengthLimit:this.urlLengthLimit,retry:this.retry})}};var J=class{static{a(this,"WorkBuddyDatabaseModule")}client;constructor(e,t){this.client=new N(`${e.endpoint}${R.database}`,{fetch:t}),this.from=this.client.from.bind(this.client),this.rpc=this.client.rpc.bind(this.client)}from;rpc;get url(){return this.client.url}};function et(r,e){return new J(r,e)}a(et,"createDatabaseModule");var x=class extends Error{static{a(this,"CloudOpenAIError")}error;status;requestId;retryAfterMs;constructor(e,t={}){let s=typeof e=="string"?{message:e,type:"server_error",param:null,code:null}:e;super(s.message),this.name="CloudOpenAIError",this.error=s,this.status=t.status,this.requestId=t.requestId,this.retryAfterMs=t.retryAfterMs,t.cause!==void 0&&("cause"in this||Object.defineProperty(this,"cause",{value:t.cause,writable:!1,enumerable:!1,configurable:!1}))}};function tt(r){if(!r)return;let e=r.trim(),t=Number(e);if(!isNaN(t)&&t>=0&&Number.isInteger(t))return t*1e3;let s=Date.parse(e);if(!isNaN(s)){let n=s-Date.now();return n>0?n:0}}a(tt,"parseRetryAfter");function m(...r){return r.find(e=>typeof e=="string"&&e.length>0)}a(m,"stringField");function k(...r){return r.find(e=>typeof e=="number"&&Number.isFinite(e))}a(k,"numberField");function E(...r){return r.find(e=>typeof e=="boolean")}a(E,"booleanField");function rt(...r){for(let e of r){if(typeof e=="number"&&Number.isFinite(e))return e;if(e!==null&&typeof e=="object"&&!Array.isArray(e))return Jt(e)}}a(rt,"contextWindowField");function Jt(r){let e={};for(let[t,s]of Object.entries(r)){if(t==="supportedLengths"){Array.isArray(s)&&(e.supportedLengths=s.filter(n=>typeof n=="number"&&Number.isFinite(n)));continue}if(t==="defaultLength"){typeof s=="number"&&Number.isFinite(s)&&(e.defaultLength=s);continue}Object.defineProperty(e,t,{value:s,writable:!0,enumerable:!0,configurable:!0})}return e}a(Jt,"normalizeContextWindowObject");function st(r){if(!r||typeof r!="object")return;let e=r,t=Array.isArray(e.input)?e.input.filter(n=>typeof n=="string"):void 0,s=Array.isArray(e.output)?e.output.filter(n=>typeof n=="string"):void 0;return t?.length||s?.length?{...t?.length?{input:t}:{},...s?.length?{output:s}:{}}:void 0}a(st,"modalitiesField");function nt(r){if(!r||typeof r!="object")return;let t=Object.entries(r).filter(([,s])=>typeof s=="boolean");return t.length?Object.fromEntries(t):void 0}a(nt,"capabilitiesField");function it(r){if(!r||typeof r!="object")return;let e=r,t={...m(e.currency)?{currency:e.currency}:{},...k(e.inputPerMillionTokens)!==void 0?{inputPerMillionTokens:e.inputPerMillionTokens}:{},...k(e.outputPerMillionTokens)!==void 0?{outputPerMillionTokens:e.outputPerMillionTokens}:{},...m(e.displayText)?{displayText:e.displayText}:{}};return Object.keys(t).length?t:void 0}a(it,"pricingField");function ot(r){if(!r||typeof r!="object")return;let e=r,t={},s=m(e.effort);s!==void 0&&(t.effort=s);let n=m(e.defaultEffort);n!==void 0&&(t.defaultEffort=n),Array.isArray(e.supportedEfforts)&&(t.supportedEfforts=e.supportedEfforts.filter(c=>typeof c=="string"));let i=m(e.summary);i!==void 0&&(i==="auto"||i==="concise"||i==="detailed")&&(t.summary=i);let o=E(e.canDisableThinking);return o!==void 0&&(t.canDisableThinking=o),Object.keys(t).length>0?t:void 0}a(ot,"reasoningField");function Yt(r){let e=m(r.id,r.ID);if(!e)return null;let t=E(r.enabled,r.Enabled),s=E(r.disabled,r.Disabled),n,i;return t!==void 0?(n=t,s!==void 0&&(i=s)):s!==void 0?(i=s,n=!s):n=!0,{id:e,name:m(r.name,r.Name)??e,...m(r.provider,r.Provider)?{provider:m(r.provider,r.Provider)}:{},...m(r.vendor,r.Vendor)?{vendor:m(r.vendor,r.Vendor)}:{},...m(r.family,r.Family)?{family:m(r.family,r.Family)}:{},...m(r.version,r.Version)?{version:m(r.version,r.Version)}:{},...m(r.description,r.Description)?{description:m(r.description,r.Description)}:{},...m(r.descriptionZh,r.DescriptionZh)?{descriptionZh:m(r.descriptionZh,r.DescriptionZh)}:{},...m(r.descriptionEn,r.DescriptionEn)?{descriptionEn:m(r.descriptionEn,r.DescriptionEn)}:{},...m(r.iconUrl,r.IconURL)?{iconUrl:m(r.iconUrl,r.IconURL)}:{},...rt(r.contextWindow,r.ContextWindow)!==void 0?{contextWindow:rt(r.contextWindow,r.ContextWindow)}:{},...k(r.maxInputTokens,r.MaxInputTokens)!==void 0?{maxInputTokens:k(r.maxInputTokens,r.MaxInputTokens)}:{},...k(r.maxOutputTokens,r.MaxOutputTokens)!==void 0?{maxOutputTokens:k(r.maxOutputTokens,r.MaxOutputTokens)}:{},...st(r.modalities??r.Modalities)?{modalities:st(r.modalities??r.Modalities)}:{},...nt(r.capabilities??r.Capabilities)?{capabilities:nt(r.capabilities??r.Capabilities)}:{},enabled:n,...i!==void 0?{disabled:i}:{},...E(r.isDefault,r.IsDefault)!==void 0?{isDefault:E(r.isDefault,r.IsDefault)}:{},...k(r.sortOrder,r.SortOrder)!==void 0?{sortOrder:k(r.sortOrder,r.SortOrder)}:{},...it(r.pricing??r.Pricing)?{pricing:it(r.pricing??r.Pricing)}:{},...m(r.credits,r.Credits)?{credits:m(r.credits,r.Credits)}:{},...k(r.maxAllowedSize,r.MaxAllowedSize)!==void 0?{maxAllowedSize:k(r.maxAllowedSize,r.MaxAllowedSize)}:{},...E(r.disabledMultimodal,r.DisabledMultimodal)!==void 0?{disabledMultimodal:E(r.disabledMultimodal,r.DisabledMultimodal)}:{},...E(r.supportsImages,r.SupportsImages)!==void 0?{supportsImages:E(r.supportsImages,r.SupportsImages)}:{},...E(r.supportsToolCall,r.SupportsToolCall)!==void 0?{supportsToolCall:E(r.supportsToolCall,r.SupportsToolCall)}:{},...E(r.supportsReasoning,r.SupportsReasoning)!==void 0?{supportsReasoning:E(r.supportsReasoning,r.SupportsReasoning)}:{},...E(r.onlyReasoning,r.OnlyReasoning)!==void 0?{onlyReasoning:E(r.onlyReasoning,r.OnlyReasoning)}:{},...ot(r.reasoning??r.Reasoning)?{reasoning:ot(r.reasoning??r.Reasoning)}:{},...k(r.temperature,r.Temperature)!==void 0?{temperature:k(r.temperature,r.Temperature)}:{},...k(r.top_k,r.Top_K)!==void 0?{top_k:k(r.top_k,r.Top_K)}:{},...k(r.top_p,r.Top_P)!==void 0?{top_p:k(r.top_p,r.Top_P)}:{},...k(r.repetition_penalty,r.Repetition_Penalty)!==void 0?{repetition_penalty:k(r.repetition_penalty,r.Repetition_Penalty)}:{}}}a(Yt,"normalizeModel");function Te(r){return r.name||r.id}a(Te,"getModelDisplayName");function Oe(r,e){return r.capabilities?.[e]}a(Oe,"getModelCapability");var he=class{static{a(this,"ModelsAPI")}baseUrl;fetch;constructor(e,t){this.baseUrl=e,this.fetch=t}async list(e){let t;try{t=await this.fetch(`${this.baseUrl}/models`,{method:"GET",headers:{Accept:"application/json"},signal:e})}catch(c){throw c instanceof Error&&c.name==="AbortError"?c:new x({message:`Network error: ${c?.message??"unknown"}`,type:"server_error",param:null,code:"gateway_network_error"},{cause:c})}if(!t.ok)throw await Ae(t);let s=await t.text(),n;try{n=JSON.parse(s)}catch{throw new x({message:"Failed to parse models response: invalid JSON",type:"server_error",param:null,code:"gateway_invalid_response"})}let i=Array.isArray(n)?n:Array.isArray(n?.data)?n.data:[],o=[];for(let c of i){let u=Yt(c);u&&o.push(u)}return o}};async function Ae(r){let e=await r.text().catch(()=>""),t;try{let i=JSON.parse(e);if(i&&typeof i=="object"&&i.error){let o=i.error;t={message:typeof o.message=="string"?o.message:`HTTP ${r.status}`,type:typeof o.type=="string"?o.type:"server_error",param:o.param===void 0?null:o.param,code:o.code===void 0?null:o.code}}else t={message:typeof i=="string"?i:`HTTP ${r.status}`,type:"server_error",param:null,code:null}}catch{t={message:e||`HTTP ${r.status}`,type:"server_error",param:null,code:null}}let s=r.headers.get("x-request-id")??void 0,n=tt(r.headers.get("retry-after"));return new x(t,{status:r.status,requestId:s,retryAfterMs:n})}a(Ae,"httpError");var fe=class{static{a(this,"Utf8Decoder")}codePoint=0;bytesNeeded=0;bytesSeen=0;lowerBoundary=128;upperBoundary=191;bomSeen=!1;streaming=!1;resetSequence(){this.codePoint=0,this.bytesNeeded=0,this.bytesSeen=0,this.lowerBoundary=128,this.upperBoundary=191}decode(e=new Uint8Array,t={}){this.streaming||(this.resetSequence(),this.bomSeen=!1),this.streaming=t.stream===!0;let s="",n=a(i=>{!this.bomSeen&&(this.bomSeen=!0,i===65279)||(s+=String.fromCodePoint(i))},"emit");for(let i=0;i<e.length;i++){let o=e[i];if(this.bytesNeeded===0){o<=127?n(o):o>=194&&o<=223?(this.bytesNeeded=1,this.codePoint=o&31):o>=224&&o<=239?(this.bytesNeeded=2,this.codePoint=o&15,o===224&&(this.lowerBoundary=160),o===237&&(this.upperBoundary=159)):o>=240&&o<=244?(this.bytesNeeded=3,this.codePoint=o&7,o===240&&(this.lowerBoundary=144),o===244&&(this.upperBoundary=143)):n(65533);continue}if(o<this.lowerBoundary||o>this.upperBoundary){this.resetSequence(),n(65533),i--;continue}this.lowerBoundary=128,this.upperBoundary=191,this.codePoint=this.codePoint<<6|o&63,this.bytesSeen++,this.bytesSeen===this.bytesNeeded&&(n(this.codePoint),this.resetSequence())}return!this.streaming&&this.bytesNeeded>0&&(n(65533),this.resetSequence()),s}};var Xt=class{static{a(this,"SSEDecoder")}event=null;dataParts=[];decode(e){let t=e;if(t.endsWith("\r")&&(t=t.slice(0,-1)),t===""){if(this.event===null&&this.dataParts.length===0)return null;let o={event:this.event,data:this.dataParts.join(`
+`)};return this.event=null,this.dataParts=[],o}if(t.startsWith(":"))return null;let s=t.indexOf(":"),n,i;if(s===-1)n=t,i="";else{n=t.slice(0,s);let o=t.slice(s+1);o.startsWith(" ")&&(o=o.slice(1)),i=o}return n==="event"?this.event=i:n==="data"&&this.dataParts.push(i),null}flush(){if(this.event===null&&this.dataParts.length===0)return null;let e={event:this.event,data:this.dataParts.join(`
+`)};return this.event=null,this.dataParts=[],e}},Qt=class{static{a(this,"LineDecoder")}buffer=new Uint8Array;decoder;constructor(){this.decoder=typeof TextDecoder>"u"?new fe:new TextDecoder("utf-8")}decode(e){let t=new Uint8Array(this.buffer.length+e.length);t.set(this.buffer),t.set(e,this.buffer.length),this.buffer=t;let s=[],n=0;for(let i=0;i<this.buffer.length;i++)if(this.buffer[i]===10||this.buffer[i]===13){let o=this.buffer.subarray(n,i),c=this.decoder.decode(o,{stream:!0});s.push(c),this.buffer[i]===13&&i+1<this.buffer.length&&this.buffer[i+1]===10&&i++,n=i+1}return n>0&&(this.buffer=this.buffer.slice(n)),s}flush(){if(this.buffer.length===0){let t=this.decoder.decode();return t?[t]:[]}let e=this.decoder.decode(this.buffer,{stream:!1});return this.buffer=new Uint8Array,e?[e]:[]}},at="[DONE]";async function*ct(r,e){let t=new Xt,s=new Qt,n=r.getReader(),i=!1,o=a(()=>{i=!0,n.cancel().catch(()=>{})},"onAbort");if(e){if(e.aborted)return;e.addEventListener("abort",o,{once:!0})}try{for(;;){if(i)return;let u;try{u=await n.read()}catch(f){if(i||f instanceof Error&&f.name==="AbortError")return;throw f}let{done:d,value:l}=u;if(d)break;for(let f of s.decode(l)){let g=t.decode(f);g&&(yield g)}}for(let u of s.flush()){let d=t.decode(u);d&&(yield d)}let c=t.flush();c&&(yield c)}finally{e&&e.removeEventListener("abort",o);try{n.releaseLock()}catch{}}}a(ct,"iterSSEEvents");function Zt(r,e){let t=e?{requestId:e}:{};try{let s=JSON.parse(r);if(s&&typeof s=="object"){let n=s.error??s;if(n&&typeof n=="object")return new x({message:typeof n.message=="string"?n.message:"Stream error",type:typeof n.type=="string"?n.type:"server_error",param:n.param===void 0?null:n.param,code:n.code===void 0?null:n.code},t)}}catch{}return new x({message:r||"Stream error",type:"server_error",param:null,code:null},t)}a(Zt,"extractSSEError");var pe=class{static{a(this,"ChatCompletionsAPI")}baseUrl;fetch;constructor(e,t){this.baseUrl=e,this.fetch=t}create(e){if(e.stream!==!0)throw new x({message:"stream must be true; non-streaming chat completions are not supported",type:"invalid_request_error",param:"stream",code:"request_stream_required"});return this.createStreaming(e)}async*createStreaming(e){let{signal:t,conversationId:s,...n}=e;n.stream=!0;let i;try{i=await this.fetch(`${this.baseUrl}/chat/completions`,{method:"POST",headers:{Accept:"text/event-stream","Content-Type":"application/json",...s!==void 0?{"X-Conversation-ID":s}:{}},body:JSON.stringify(n),signal:t})}catch(d){if(d instanceof Error&&d.name==="AbortError")return;throw new x({message:`Network error: ${d?.message??"unknown"}`,type:"server_error",param:null,code:"gateway_network_error"},{cause:d})}if(!i.ok)throw await Ae(i);if(!i.body)throw new x({message:"Response body is empty \u2014 streaming not supported",type:"server_error",param:null,code:"gateway_invalid_response"},{requestId:i.headers.get("x-request-id")??void 0});let o=i.headers.get("x-request-id")??void 0,c=!1,u=!1;try{for await(let d of ct(i.body,t)){if(d.event==="error")throw u=!0,Zt(d.data,o);if(d.event===null||d.event===""){if(d.data===at){c=!0;return}if(!d.data)continue;let l;try{l=JSON.parse(d.data)}catch{throw u=!0,new x({message:`Failed to parse SSE data: ${d.data}`,type:"server_error",param:null,code:"gateway_invalid_response"},{requestId:o})}if(l&&typeof l=="object"&&"error"in l){u=!0;let f=l.error;throw new x({message:typeof f?.message=="string"?f.message:"Stream error",type:typeof f?.type=="string"?f.type:"server_error",param:f?.param===void 0?null:f.param,code:f?.code===void 0?null:f.code},{requestId:o})}yield l}}}catch(d){if(d instanceof Error&&d.name==="AbortError")return;throw u=!0,d}if(!c&&!u&&!t?.aborted)throw new x({message:"\u6D41\u5F0F\u54CD\u5E94\u4E2D\u65AD\u3002",type:"server_error",param:null,code:"gateway_stream_interrupted"},{requestId:o})}};var M=class{static{a(this,"LlmModule")}fetch;baseUrl;models;chat;constructor(e,t){this.fetch=t,this.baseUrl=`${e.endpoint}${R.llm}`,this.models=new he(this.baseUrl,this.fetch),this.chat={completions:new pe(this.baseUrl,this.fetch)}}};var F=class extends Error{static{a(this,"StorageError")}__isStorageError=!0;namespace;status;statusCode;constructor(e,t="storage",s,n){super(e),this.namespace=t,this.name=t==="vectors"?"StorageVectorsError":"StorageError",this.status=s,this.statusCode=n}toJSON(){return{name:this.name,message:this.message,status:this.status,statusCode:this.statusCode}}};function U(r){return typeof r=="object"&&r!==null&&"__isStorageError"in r}a(U,"isStorageError");var C=class extends F{static{a(this,"StorageApiError")}status;statusCode;code;constructor(e,t,s,n="storage",i){super(e,n,t,s),this.name=n==="vectors"?"StorageVectorsApiError":"StorageApiError",this.status=t,this.statusCode=s,this.code=i}toJSON(){return{...super.toJSON(),code:this.code}}},q=class extends F{static{a(this,"StorageUnknownError")}originalError;constructor(e,t,s="storage"){super(e,s),this.name=s==="vectors"?"StorageVectorsUnknownError":"StorageUnknownError",this.originalError=t}};function L(r,e,t){let s={...r},n=e.toLowerCase();for(let i of Object.keys(s))i.toLowerCase()===n&&delete s[i];return s[n]=t,s}a(L,"setHeader");function ut(r){let e={};for(let[t,s]of Object.entries(r))e[t.toLowerCase()]=s;return e}a(ut,"normalizeHeaders");var dt=a(r=>r?(...e)=>r(...e):(...e)=>fetch(...e),"resolveFetch");var lt=a(r=>{if(typeof r!="object"||r===null)return!1;let e=Object.getPrototypeOf(r);return(e===null||e===Object.prototype||Object.getPrototypeOf(e)===null)&&!(Symbol.toStringTag in r)&&!(Symbol.iterator in r)},"isPlainObject"),me=a(r=>{if(Array.isArray(r))return r.map(t=>me(t));if(typeof r=="function"||r!==Object(r))return r;let e={};return Object.entries(r).forEach(([t,s])=>{let n=t.replace(/([-_][a-z])/gi,i=>i.toUpperCase().replace(/[-_]/g,""));e[n]=me(s)}),e},"recursiveToCamel");var ht=a(r=>r.split("/").map(encodeURIComponent).join("/"),"encodeStoragePath");var ft=a(r=>{if(typeof r=="object"&&r!==null){let e=r;if(typeof e.msg=="string")return e.msg;if(typeof e.message=="string")return e.message;if(typeof e.error_description=="string")return e.error_description;if(typeof e.error=="string")return e.error;if(typeof e.error=="object"&&e.error!==null){let t=e.error;if(typeof t.message=="string")return t.message}}return JSON.stringify(r)},"_getErrorMessage"),er=a(async(r,e,t,s)=>{if(r!==null&&typeof r=="object"&&"json"in r&&typeof r.json=="function"){let i=r,o=parseInt(String(i.status),10);Number.isFinite(o)||(o=500),i.json().then(c=>{let u=c?.statusCode||c?.code||o+"";e(new C(ft(c),o,u,s,c?.code))}).catch(()=>{let c=o+"",u=i.statusText||`HTTP ${o} error`;e(new C(u,o,c,s))})}else e(new q(ft(r),r,s))},"handleError"),tr=a((r,e,t,s)=>{let n={method:r,headers:e?.headers||{}};if(r==="GET"||r==="HEAD"||!s)return{...n,...t};if(lt(s)){let i=e?.headers||{},o;for(let[c,u]of Object.entries(i))c.toLowerCase()==="content-type"&&(o=u);n.headers=L(i,"Content-Type",o??"application/json"),n.body=JSON.stringify(s)}else n.body=s;return e?.duplex&&(n.duplex=e.duplex),{...n,...t}},"_getRequestParams");async function Y(r,e,t,s,n,i,o){return new Promise((c,u)=>{r(t,tr(e,s,n,i)).then(d=>{if(!d.ok)throw d;if(s?.noResolveJson)return d;if(o==="vectors"){let l=d.headers.get("content-type");if(d.headers.get("content-length")==="0"||d.status===204)return{};if(!l||!l.includes("application/json"))return{}}return d.json()}).then(d=>c(d)).catch(d=>er(d,u,s,o))})}a(Y,"_handleRequest");function pt(r="storage"){return{get:a(async(e,t,s,n)=>Y(e,"GET",t,s,n,void 0,r),"get"),post:a(async(e,t,s,n,i)=>Y(e,"POST",t,n,i,s,r),"post"),put:a(async(e,t,s,n,i)=>Y(e,"PUT",t,n,i,s,r),"put"),head:a(async(e,t,s,n)=>Y(e,"HEAD",t,{...s,noResolveJson:!0},n,void 0,r),"head"),remove:a(async(e,t,s,n,i)=>Y(e,"DELETE",t,n,i,s,r),"remove")}}a(pt,"createFetchApi");var rr=pt("storage"),{get:Re,post:$,put:$e,head:mt,remove:Ue}=rr,Ms=pt("vectors");var X=class{static{a(this,"BaseApiClient")}url;headers;fetch;shouldThrowOnError=!1;namespace;constructor(e,t={},s,n="storage"){this.url=e,this.headers=ut(t),this.fetch=dt(s),this.namespace=n}throwOnError(){return this.shouldThrowOnError=!0,this}setHeader(e,t){return this.headers=L(this.headers,e,t),this}async handleOperation(e){try{return{data:await e(),error:null}}catch(t){if(this.shouldThrowOnError)throw t;if(U(t))return{data:null,error:t};throw t}}};var Q=class{static{a(this,"StreamDownloadBuilder")}downloadFn;shouldThrowOnError;[Symbol.toStringTag]="StreamDownloadBuilder";promise=null;constructor(e,t){this.downloadFn=e,this.shouldThrowOnError=t}then(e,t){return this.getPromise().then(e,t)}catch(e){return this.getPromise().catch(e)}finally(e){return this.getPromise().finally(e)}getPromise(){return this.promise||(this.promise=this.execute()),this.promise}async execute(){try{return{data:(await this.downloadFn()).body,error:null}}catch(e){if(this.shouldThrowOnError)throw e;if(U(e))return{data:null,error:e};throw e}}};var Z=class{static{a(this,"BlobDownloadBuilder")}downloadFn;shouldThrowOnError;[Symbol.toStringTag]="BlobDownloadBuilder";promise=null;constructor(e,t){this.downloadFn=e,this.shouldThrowOnError=t}asStream(){return new Q(this.downloadFn,this.shouldThrowOnError)}then(e,t){return this.getPromise().then(e,t)}catch(e){return this.getPromise().catch(e)}finally(e){return this.getPromise().finally(e)}getPromise(){return this.promise||(this.promise=this.execute()),this.promise}async execute(){try{return{data:await(await this.downloadFn()).blob(),error:null}}catch(e){if(this.shouldThrowOnError)throw e;if(U(e))return{data:null,error:e};throw e}}};var Ie={limit:100,offset:0,sortBy:{column:"name",order:"asc"}},gt={cacheControl:"3600",contentType:"text/plain;charset=UTF-8",upsert:!1},ee=class extends X{static{a(this,"StorageFileApi")}bucketId;constructor(e,t={},s,n){super(e,t,n,"storage"),this.bucketId=s}async uploadOrUpdate(e,t,s,n){return this.handleOperation(async()=>{let i,o={...gt,...n},c={...this.headers,...e==="POST"&&{"x-upsert":String(o.upsert)}},u=o.metadata;if(typeof Blob<"u"&&s instanceof Blob?(i=new FormData,i.append("cacheControl",o.cacheControl),u&&i.append("metadata",this.encodeMetadata(u)),i.append("",s)):typeof FormData<"u"&&s instanceof FormData?(i=s,i.has("cacheControl")||i.append("cacheControl",o.cacheControl),u&&!i.has("metadata")&&i.append("metadata",this.encodeMetadata(u))):(i=s,c["cache-control"]=`max-age=${o.cacheControl}`,c["content-type"]=o.contentType,u&&(c["x-metadata"]=this.toBase64(this.encodeMetadata(u))),(typeof ReadableStream<"u"&&i instanceof ReadableStream||i&&typeof i=="object"&&"pipe"in i&&typeof i.pipe=="function")&&!o.duplex&&(o.duplex="half")),n?.headers)for(let[g,y]of Object.entries(n.headers))c=L(c,g,y);let d=this._removeEmptyFolders(t),l=this._getFinalPath(d),f=await(e=="PUT"?$e:$)(this.fetch,`${this.url}/object/${l}`,i,{headers:c,...o?.duplex?{duplex:o.duplex}:{}});return{path:d,id:f.Id,fullPath:f.Key}})}async upload(e,t,s){return this.uploadOrUpdate("POST",e,t,s)}async uploadToSignedUrl(e,t,s,n){let i=this._removeEmptyFolders(e),o=this._getFinalPath(i),c=new URL(this.url+`/object/upload/sign/${o}`);return c.searchParams.set("token",t),this.handleOperation(async()=>{let u,d={...gt,...n},l={...this.headers,"x-upsert":String(d.upsert)},f=d.metadata;if(typeof Blob<"u"&&s instanceof Blob?(u=new FormData,u.append("cacheControl",d.cacheControl),f&&u.append("metadata",this.encodeMetadata(f)),u.append("",s)):typeof FormData<"u"&&s instanceof FormData?(u=s,u.has("cacheControl")||u.append("cacheControl",d.cacheControl),f&&!u.has("metadata")&&u.append("metadata",this.encodeMetadata(f))):(u=s,l["cache-control"]=`max-age=${d.cacheControl}`,l["content-type"]=d.contentType,f&&(l["x-metadata"]=this.toBase64(this.encodeMetadata(f))),(typeof ReadableStream<"u"&&u instanceof ReadableStream||u&&typeof u=="object"&&"pipe"in u&&typeof u.pipe=="function")&&!d.duplex&&(d.duplex="half")),n?.headers)for(let[y,ne]of Object.entries(n.headers))l=L(l,y,ne);let g=await $e(this.fetch,c.toString(),u,{headers:l,...d?.duplex?{duplex:d.duplex}:{}});return{path:i,fullPath:g.Key}})}async createSignedUploadUrl(e,t){return this.handleOperation(async()=>{let s=this._getFinalPath(e),n={...this.headers};t?.upsert&&(n["x-upsert"]="true");let i=await $(this.fetch,`${this.url}/object/upload/sign/${s}`,{},{headers:n}),o=new URL(this.url+i.url),c=o.searchParams.get("token");if(!c)throw new F("No token returned by API");return{signedUrl:o.toString(),path:e,token:c}})}async update(e,t,s){return this.uploadOrUpdate("PUT",e,t,s)}async move(e,t,s){return this.handleOperation(async()=>await $(this.fetch,`${this.url}/object/move`,{bucketId:this.bucketId,sourceKey:e,destinationKey:t,destinationBucket:s?.destinationBucket},{headers:this.headers}))}async copy(e,t,s){return this.handleOperation(async()=>({path:(await $(this.fetch,`${this.url}/object/copy`,{bucketId:this.bucketId,sourceKey:e,destinationKey:t,destinationBucket:s?.destinationBucket},{headers:this.headers})).Key}))}async createSignedUrl(e,t,s){return this.handleOperation(async()=>{let n=this._getFinalPath(e),i=typeof s?.transform=="object"&&s.transform!==null&&Object.keys(s.transform).length>0,o=await $(this.fetch,`${this.url}/object/sign/${n}`,{expiresIn:t,...i?{transform:s.transform}:{}},{headers:this.headers}),c=new URLSearchParams;s?.download&&c.set("download",s.download===!0?"":s.download),s?.cacheNonce!=null&&c.set("cacheNonce",String(s.cacheNonce));let u=c.toString();return{signedUrl:encodeURI(`${this.url}${o.signedURL}${u?`&${u}`:""}`)}})}async createSignedUrls(e,t,s){return this.handleOperation(async()=>{let n=await $(this.fetch,`${this.url}/object/sign/${this.bucketId}`,{expiresIn:t,paths:e},{headers:this.headers}),i=new URLSearchParams;s?.download&&i.set("download",s.download===!0?"":s.download),s?.cacheNonce!=null&&i.set("cacheNonce",String(s.cacheNonce));let o=i.toString();return n.map(c=>({...c,signedUrl:c.signedURL?encodeURI(`${this.url}${c.signedURL}${o?`&${o}`:""}`):null}))})}download(e,t,s){let i=typeof t?.transform=="object"&&t.transform!==null&&Object.keys(t.transform).length>0?"render/image/authenticated":"object",o=new URLSearchParams;t?.transform&&this.applyTransformOptsToQuery(o,t.transform),t?.cacheNonce!=null&&o.set("cacheNonce",String(t.cacheNonce));let c=o.toString(),u=this._getFinalPath(e),d=a(()=>Re(this.fetch,`${this.url}/${i}/${u}${c?`?${c}`:""}`,{headers:this.headers,noResolveJson:!0},s),"downloadFn");return new Z(d,this.shouldThrowOnError)}async info(e){let t=this._getFinalPath(e);return this.handleOperation(async()=>{let s=await Re(this.fetch,`${this.url}/object/info/${t}`,{headers:this.headers});return me(s)})}async exists(e){let t=this._getFinalPath(e);try{return await mt(this.fetch,`${this.url}/object/${t}`,{headers:this.headers}),{data:!0,error:null}}catch(s){if(this.shouldThrowOnError)throw s;if(U(s)){let n=s instanceof C?s.status:s instanceof q?s.originalError?.status:void 0;if(n!==void 0&&[400,404].includes(n))return{data:!1,error:s}}throw s}}getPublicUrl(e,t){let s=this._getFinalPath(e),n=new URLSearchParams;t?.download&&n.set("download",t.download===!0?"":t.download),t?.transform&&this.applyTransformOptsToQuery(n,t.transform),t?.cacheNonce!=null&&n.set("cacheNonce",String(t.cacheNonce));let i=n.toString(),c=typeof t?.transform=="object"&&t.transform!==null&&Object.keys(t.transform).length>0?"render/image":"object";return{data:{publicUrl:encodeURI(`${this.url}/${c}/public/${s}`)+(i?`?${i}`:"")}}}async remove(e){return this.handleOperation(async()=>await Ue(this.fetch,`${this.url}/object/${this.bucketId}`,{prefixes:e},{headers:this.headers}))}async purgeCache(e,t,s){return this.handleOperation(async()=>{let n=ht(this._getFinalPath(e)),i=new URLSearchParams;t?.transformations&&i.set("transformations","true");let o=i.toString();return await Ue(this.fetch,`${this.url}/cdn/${n}${o?`?${o}`:""}`,{},{headers:this.headers},s)})}async list(e,t,s){return this.handleOperation(async()=>{let n=t?.sortBy?{...Ie.sortBy,...t.sortBy}:Ie.sortBy,i={...Ie,...t,sortBy:n,prefix:e||""};return await $(this.fetch,`${this.url}/object/list/${this.bucketId}`,i,{headers:this.headers},s)})}async listV2(e,t){return this.handleOperation(async()=>{let s={...e};return await $(this.fetch,`${this.url}/object/list-v2/${this.bucketId}`,s,{headers:this.headers},t)})}encodeMetadata(e){return JSON.stringify(e)}toBase64(e){return typeof Buffer<"u"?Buffer.from(e).toString("base64"):btoa(e)}_getFinalPath(e){return`${this.bucketId}/${e.replace(/^\/+/,"")}`}_removeEmptyFolders(e){return e.replace(/^\/|\/$/g,"").replace(/\/+/g,"/")}applyTransformOptsToQuery(e,t){return t.width&&e.set("width",t.width.toString()),t.height&&e.set("height",t.height.toString()),t.resize&&e.set("resize",t.resize),t.format&&e.set("format",t.format),t.quality&&e.set("quality",t.quality.toString()),e}};var yt="2.112.3";var bt={"X-Client-Info":`storage-js/${yt}`};var W="runtime",ge=600,ye=3600,w=class extends Error{static{a(this,"CloudStoragePathError")}constructor(e){super(e),this.name="CloudStoragePathError"}},te=class{static{a(this,"WorkBuddyStorageDownload")}blob;stream;[Symbol.toStringTag]="WorkBuddyStorageDownload";constructor(e,t){this.blob=e,this.stream=t}asStream(){return this.stream()}then(e,t){return this.blob().then(e,t)}catch(e){return this.blob().catch(e)}finally(e){return this.blob().finally(e)}},H=class{static{a(this,"WorkBuddyStorageBucket")}fileApi;constructor(e){this.fileApi=e}upload(e,t,s){return _(this.fileApi.upload(v(e),t,s))}update(e,t,s){return _(this.fileApi.update(v(e),t,s))}list(e="",t){return _(this.fileApi.list(St(e),t))}listPage(e){return _(this.fileApi.listV2({...e,prefix:St(e?.prefix??"")}))}info(e){return _(this.fileApi.info(v(e)))}async exists(e){let t=await this.fileApi.exists(v(e));return t.error?{data:null,error:Et(t.error)}:{data:t.data,error:null}}download(e){let t=this.fileApi.download(v(e));return new te(()=>_(t),()=>_(t.asStream()))}remove(e){if(e.length===0)throw new w("remove requires at least one object path.");return _(this.fileApi.remove(e.map(v)))}copy(e,t){return _(this.fileApi.copy(v(e),v(t)))}move(e,t){return _(this.fileApi.move(v(e),v(t)))}createSignedUrl(e,t=ge){return _(this.fileApi.createSignedUrl(v(e),kt(t)))}createSignedUrls(e,t=ge){if(e.length===0)throw new w("createSignedUrls requires at least one object path.");return _(this.fileApi.createSignedUrls(e.map(v),kt(t)))}createSignedUploadUrl(e,t){return _(this.fileApi.createSignedUploadUrl(v(e),{upsert:t?.upsert??!1}))}uploadToSignedUrl(e,t,s,n){if(!t)throw new w("signed upload token is required.");return _(this.fileApi.uploadToSignedUrl(v(e),t,s,n))}},re=class extends H{static{a(this,"WorkBuddyStorageModule")}runtime;constructor(e){let s=e.from(W);super(s),this.runtime=new H(s)}from(e=W){if(e!==W)throw new w(`Only the "${W}" storage bucket is available.`);return this.runtime}userPath(e,t){return wt("users",e,t)}sharedPath(e,t){return wt("shared",e,t)}};function xt(r,e){let t={from:a(s=>new ee(`${r.endpoint}${R.storage}`,bt,s,e),"from")};return new re(t)}a(xt,"createStorageModule");function wt(r,e,t){let s=sr(e,"owner/user id"),n=Ce(t,!1);return v(`${r}/${s}/${n}`)}a(wt,"scopedPath");function v(r){let e=Ce(r,!1);if(!e.includes("/"))throw new w("Object paths must use users/<uid>/... or shared/<ownerUid>/....");let[t,s,...n]=e.split("/");if(t!=="users"&&t!=="shared"||!s||n.length===0)throw new w("Object paths must use users/<uid>/... or shared/<ownerUid>/....");return e}a(v,"validateObjectPath");function St(r){if(r==="")return"";let e=Ce(r,!0),[t,s]=e.split("/");if(t==="shared"&&!s)return"shared";if(t!=="users"&&t!=="shared"||!s)throw new w("List prefixes must start with users/<uid> or shared/<ownerUid>.");return e}a(St,"validateObjectPrefix");function Ce(r,e){if(typeof r!="string"||r.trim()==="")throw new w("Storage path must be a non-empty relative path.");let t=r.trim();for(let i=0;i<3;i+=1)try{let o=decodeURIComponent(t);if(o===t)break;t=o}catch{throw new w("Storage path contains invalid URL encoding.")}if(t.startsWith("/")||t.includes("\\")||t.includes("\0")||t.includes("//")||!e&&t.endsWith("/"))throw new w("Storage path is not a safe relative object path.");let s=e?t.replace(/\/+$/,""):t;if(s.split("/").some(i=>i===""||i==="."||i===".."))throw new w("Storage path traversal is not allowed.");return s}a(Ce,"validatePath");function sr(r,e){if(!r)throw new w(`${e} is not a valid storage path segment.`);let t=r;for(let s=0;s<3;s+=1)try{let n=decodeURIComponent(t);if(n===t)break;t=n}catch{throw new w(`${e} contains invalid URL encoding.`)}if(t.includes("/")||t.includes("\\")||t.includes("\0")||t==="."||t==="..")throw new w(`${e} is not a valid storage path segment.`);return t}a(sr,"validatePathSegment");function kt(r){if(!Number.isInteger(r)||r<=0||r>ye)throw new w(`Signed URL expiry must be an integer between 1 and ${ye} seconds.`);return r}a(kt,"validateSignedURLTTL");async function _(r){let e=await r;return e.error?{data:null,error:Et(e.error)}:e.data===null?{data:null,error:{name:"CloudStorageResponseError",message:"Storage API returned neither data nor an error."}}:{data:e.data,error:null}}a(_,"mapStorageResult");function Et(r){if(r instanceof Error){let e=r;return{name:e.name,message:e.message,status:e.status,statusCode:e.statusCode,code:e.code,cause:r}}return{name:"CloudStorageError",message:String(r),cause:r}}a(Et,"normalizeStorageError");var se=class{static{a(this,"WorkBuddyCloudClient")}config;database;auth;storage;llm;constructor(e,t={}){this.config=e,this.auth=new D(e,we(e,oe),{storage:t.storage,workBuddyMiniProgram:t.workBuddyMiniProgram});let s=we(e,()=>this.auth.getAccessToken());this.database=et(e,s),this.storage=xt(e,s),this.llm=new M(e,s)}get endpoint(){return this.config.endpoint}get oauthRelayBaseUrl(){return this.config.oauthRelayBaseUrl}};function vt(r){return new se(je(r),{storage:r.storage})}a(vt,"createWorkBuddyCloud");function Pt(r){return r.kind==="unauthenticated"||r.code==="invalid_grant"}a(Pt,"shouldClearCredentials");return $t(nr);})();
+
+</script>
+<script>
+/* ============ 数据 ============ */
+
+const STAGES = [
+  {
+    name: '读懂任务书，把要求变成指标',
+    goal: '把任务书里每一句模糊的话，翻译成一个能测出来的数字。',
+    tasks: [
+      { t: '抄下任务书原文', d: '基本要求和发挥部分分开抄。基本要求是及格线，发挥部分是加分项。先别做发挥。' },
+      { t: '每条要求对应一个可测量', d: '例：「温度可实时显示」→ 刷新间隔 ≤1s；「误差小」→ 误差 ≤0.5℃。写不出指标的，说明这条要求你没读懂。' },
+      { t: '确认平台限制', d: '课设常指定主控（51/STM32/FPGA）或软件（Multisim/Proteus/MATLAB）。超范围选型一律扣分，先问清老师能不能换。' },
+      { t: '画系统框图', d: '输入 → 处理 → 输出 → 人机界面 → 电源，五个框就够。框图讲不通的方案，电路一定画不出来。' },
+      { t: '用一句话说清系统做什么', d: '讲给不懂的人听，能听懂就说明你想清楚了。说不清，回去重读任务书。' }
+    ],
+    traps: [
+      '跳过指标直接画电路 —— 做到最后才发现指标没达标，全套返工。',
+      '发挥部分做了一堆，基本要求漏了一条，成绩按基本要求给。'
+    ]
+  },
+  {
+    name: '方案设计',
+    goal: '把框图拆成模块，每个模块的接口和参数都定下来。',
+    tasks: [
+      { t: '列模块表', d: '每个模块写四件事：吃什么信号、吐什么信号、接口电平是多少、供电几伏。这四件事写不清的模块，就是后面调不出来的模块。' },
+      { t: '至少对比两个方案', d: '主控、传感器、通信各比一次。写选择理由：精度、成本、上手难度、能不能按时买到。' },
+      { t: '定关键参数', d: '采样率、分辨率（几个 bit）、通信速率、刷新率、功耗。这些直接决定选型和指标能不能达标。' },
+      { t: '做风险清单', d: '列出最可能做不出来的两个点，各写一个降级方案。比如无线调不通，就改成有线演示。' },
+      { t: '排时间表', d: '硬件调试至少占一半时间。留出 3 天缓冲，课设永远会晚。' }
+    ],
+    traps: [
+      '选了一个自己完全没接触过的新芯片，光看手册就花一周。',
+      '没做降级方案，一个点卡死导致整个项目交不出来。'
+    ]
+  },
+  {
+    name: '器件选型与采购',
+    goal: '确保图上的每个器件都能买得到、焊得上、能驱动。',
+    tasks: [
+      { t: '列 BOM 表', d: '型号、封装、数量、单价、替代型号。五列都要有。封装写错的后果是板子打回来焊不上。' },
+      { t: '先查库存再画图', d: '选型时先看淘宝/立创有没有现货。买不到的芯片再优秀也等于零。' },
+      { t: '关键器件买 2 份', d: '主控、传感器、驱动芯片各多买一个。烧一片还有备的。' },
+      { t: '确认调试工具能用', d: '下载器（ST-Link/J-Link）、USB-TTL 的电平是 3.3V 还是 5V、驱动装没装。开焊前先试通。' },
+      { t: '算打样周期', d: 'PCB 打样一般 3~7 天，加上快递。时间不够就用万能板，别硬等。' }
+    ],
+    traps: [
+      '封装选成 SOP 却按 SSOP 画的焊盘，全板报废。',
+      'USB-TTL 是 5V 电平，直接接 3.3V 芯片，通信口烧了。'
+    ]
+  },
+  {
+    name: '分模块实现与单元测试',
+    goal: '一次只让一个模块工作，测通了再接下一个。',
+    tasks: [
+      { t: '先测电源，空载和带载都测', d: '万用表测输出电压、示波器看纹波。这一步不过关，后面所有现象都是假的。' },
+      { t: '最小系统先点灯', d: '能点灯、能串口打印，才算主控活了。别一上来就挂传感器。' },
+      { t: '逐个模块单独验证', d: '每个外设单独写测试代码，能稳定输出再进主程序。' },
+      { t: '用串口打印代替猜', d: '关键变量、寄存器值、状态机走到哪一步，全部打出来。这比盯着电路想快十倍。' },
+      { t: '每个模块留下测试记录', d: '测什么、测出什么、是否符合预期。后面写报告和答辩直接拿来用。' }
+    ],
+    traps: [
+      '所有模块一次性接上再烧程序，出问题时不知道是哪一级坏了。',
+      '只看现象不看数据，靠"感觉对了"往下走。'
+    ]
+  },
+  {
+    name: '系统联调',
+    goal: '把各模块串起来，逐级接入，逐级验证。',
+    tasks: [
+      { t: '按信号链顺序接', d: '传感器 → 调理 → ADC → 主控 → 显示。每接一级测一次，出问题范围就限定在最后接的那一级。' },
+      { t: '记录每一次改动', d: '改了什么、现象怎么变。没有记录的调试等于重来。' },
+      { t: '干扰问题先查电源和地', d: '九成的"不稳定""偶尔死机"是电源跌落或地线共阻抗，不是代码。' },
+      { t: '实测指标', d: '用示波器/万用表实测，和第一阶段定的指标逐条对。差多少、为什么差，都要能说出来。' },
+      { t: '连续跑 30 分钟以上', d: '短时间正常不算通过。跑久了发热、漂移、死机才是真问题。' }
+    ],
+    traps: [
+      '电机、继电器和主控共用一路电源，动作瞬间单片机复位。',
+      '指标靠推理不靠测量，答辩被问到实测数据答不上来。'
+    ]
+  },
+  {
+    name: '写报告',
+    goal: '让评审只看纸面就能判断你确实做出来了。',
+    tasks: [
+      { t: '按标准结构写', d: '任务与指标 → 方案论证 → 硬件设计 → 软件设计 → 测试方法与数据 → 误差分析 → 结论。老师按这个顺序找东西。' },
+      { t: '图要有图号和图注', d: '原理图、流程图、波形图全部编号，正文必须引用（如"如图 3 所示"）。没引用的图等于没写。' },
+      { t: '测试数据用表格', d: '测什么、用什么仪器、量程多少、测了几组、误差多少。数据必须是实测的。' },
+      { t: '误差分析写具体来源', d: '写量化误差、参考电压精度、电阻容差、温漂。别写"由于水平有限"，那是扣分项。' },
+      { t: '对照任务书逐条验收', d: '写完把任务书拿出来，一条一条打勾。漏的那条现在就补。' }
+    ],
+    traps: [
+      '原理图和实物不一致（改了板没改图），一问就穿。',
+      '误差分析空话一堆，没有任何一个具体数值。'
+    ]
+  },
+  {
+    name: 'PPT 与答辩',
+    goal: '8 分钟讲清你做了什么、怎么做的、做得怎么样。',
+    tasks: [
+      { t: '控制在 8~12 页', d: '题目与指标 / 系统框图 / 硬件要点 / 软件流程 / 关键难点与解决 / 实测数据 / 实物演示 / 不足与改进。一页一个重点。' },
+      { t: '字少图大', d: '每页文字不超过 6 行。框图、波形图、实物照片占主要面积。' },
+      { t: '准备三个必答题', d: '为什么这么选型？指标怎么测的？哪里做得不够？这三问几乎必问。' },
+      { t: '演示要有 Plan B', d: '现场演示前录一段视频。线断了、板子摔了、现场没电源，视频能救你。' },
+      { t: '提前彩排一次并计时', d: '自己讲一遍掐表。超时就删页，不要靠讲快点硬撑。' }
+    ],
+    traps: [
+      'PPT 全是文字，答辩老师三秒看完就不听了。',
+      '没准备实物演示的备用方案，现场翻车。'
+    ]
+  }
+];
+
+const DIAG = [
+  {
+    cat: '电源与供电',
+    cases: [
+      {
+        id: 'pwr-low',
+        name: '稳压输出不对：偏低、为 0 或一直跳',
+        causes: [
+          '输入电压不足或压差不够（AMS1117 这类线性稳压需要输入比输出高 1.1V 以上，带载时更明显）',
+          '负载短路或电流超限，芯片进入限流/热保护，输出被拉低',
+          '引脚定义看错（SOT-223 封装的散热片是输出端，不是输入端）',
+          '输出电容缺失或容值太小，芯片自激振荡，输出不稳',
+          '焊接虚焊，尤其是接地焊盘没真正连上'
+        ],
+        steps: [
+          '万用表直流档先测输入电压，确认在芯片要求范围内。输入不够，后面全白搭。',
+          '断开负载再测输出。断开后正常 → 问题在负载侧（短路或过流）；仍然不对 → 问题在电源本身。',
+          '测输出对地电阻（断电状态下）。低于几十欧姆说明有短路，先找短路点。',
+          '查芯片数据手册的引脚定义，逐个量电压，别凭丝印猜。',
+          '输出端并一个 10uF 钽电容 + 0.1uF 瓷片电容，靠近芯片引脚，再看输出是否稳定。',
+          '手摸芯片温度。烫手就是功耗过大，算一下 (输入-输出)×电流，对照手册的允许功耗。'
+        ],
+        key: '先做一件事：断开负载测输出。这一步就能把问题范围砍掉一半。'
+      },
+      {
+        id: 'pwr-hot',
+        name: '稳压芯片发烫严重',
+        causes: [
+          '线性稳压压差过大：功耗 = (Vin - Vout) × I，5V 降到 3.3V 带 300mA 就是 0.5W，SOT-23 封装扛不住',
+          '负载电流超出芯片额定值',
+          '输入输出接反',
+          '芯片没有散热铜箔，热量散不出去',
+          '买到了假货或翻新片，实际参数不达标'
+        ],
+        steps: [
+          '测实际负载电流。超过手册额定值就换更大电流的型号或加扩流管。',
+          '算功耗：(Vin - Vout) × I。对比手册的允许功耗曲线，超了就改方案。',
+          '压差大、电流大就换开关电源（如 MP1584、LM2596），效率从 40% 提到 85%。',
+          '在芯片周围加大面积覆铜并打过孔，做散热。',
+          '检查输入输出有没有接反，反接会直接击穿。'
+        ],
+        key: '发烫不是小问题。线性稳压在压差大、电流大的场合本身就不合适，该换拓扑就换。'
+      },
+      {
+        id: 'pwr-ripple',
+        name: '输出纹波大、电压跳动',
+        causes: [
+          '输出电容太小，或电容离芯片太远（走线电感抵消了滤波作用）',
+          '开关电源布局差：电感回路面积大，环路辐射干扰',
+          '数字地和模拟地共用一条线，数字电流的压降串到模拟侧',
+          '负载突变时储能不足',
+          '输入电源本身就不干净（USB 供电尤其常见）'
+        ],
+        steps: [
+          '示波器用 AC 耦合、20MHz 带宽限制测输出纹波，探头地线用弹簧地针，不要用长地线夹（长地线会测出假纹波）。',
+          '在负载端就近并 10uF + 0.1uF，看纹波是否下降。下降说明是滤波不足。',
+          '检查开关电源的电感、输入电容、输出电容是否紧贴芯片，回路面积是否最小。',
+          '数字部分和模拟部分分开供电，或中间串磁珠/0 欧电阻，最后单点共地。',
+          '在负载两端加 100uF 以上电解电容，改善负载突变时的电压跌落。'
+        ],
+        key: '测纹波的方法本身很关键。用长地线夹测出来的纹波，一半是探头自己引入的。'
+      }
+    ]
+  },
+  {
+    cat: '单片机最小系统',
+    cases: [
+      {
+        id: 'mcu-dead',
+        name: '上电完全没反应：灯不亮、不发热、串口无输出',
+        causes: [
+          '供电没真正加到 VCC 引脚：排针虚焊、跳线帽没插、电源开关没打开',
+          '晶振没起振：负载电容不匹配、晶振损坏、走线太长',
+          '复位引脚被一直拉低：复位电容短路、复位按键卡死、复位电路参数错',
+          'BOOT 引脚电平不对，芯片没进入正常启动区',
+          '芯片本身已损坏（曾经反接或过压）'
+        ],
+        steps: [
+          '万用表测 VCC 对 GND 的电压，必须是标称值 ±0.1V 以内。先确认电真的到了芯片引脚上，不是到了排针上。',
+          '测复位引脚电压。正常工作时应为高电平（约 VCC）。一直是 0V 就是复位电路有问题。',
+          '示波器（或用频率档）测晶振引脚，看有没有起振波形。没有波形先换晶振和负载电容。',
+          '查 BOOT0 / BOOT1 电平是否符合当前启动方式（STM32 串口下载需 BOOT0=1，正常运行需 BOOT0=0）。',
+          '用示波器看有没有时钟输出（MCO 引脚），能判断芯片是否真的在跑。',
+          '换一片新芯片试。这一步能快速排除芯片损坏。'
+        ],
+        key: '顺序固定：先电、再复位、再时钟、最后才怀疑芯片。反着查会浪费大量时间。'
+      },
+      {
+        id: 'mcu-download',
+        name: '程序下载不进去',
+        causes: [
+          '下载器驱动没装好或端口选错',
+          '芯片被读保护/选项字节锁死',
+          'SWD 引脚被程序复用成普通 GPIO，或程序里进了低功耗模式关了调试口',
+          '目标板没供电，或下载器和目标板没有共地',
+          '接线错误：SWDIO/SWCLK 接反、NRST 没接',
+          'BOOT0 电平不对导致芯片没在可下载状态'
+        ],
+        steps: [
+          '先确认下载器和电脑通信正常（Keil/CubeProgrammer 里能看到下载器型号）。',
+          '测目标板供电，再把下载器的 GND 和板子的 GND 连上。不共地是最常见的低级错误。',
+          '把 BOOT0 拉高（接 VCC）后重新上电，再试下载。这能救回大部分被锁的芯片。',
+          '用 STM32CubeProgrammer 的连接设置里选 "Connect Under Reset"，配合手动按住复位键再点下载。',
+          '降低 SWD 速率到 1MHz 以下再试。走线长或干扰大时高速率会失败。',
+          '全片擦除（Erase Full Chip）解除读保护。注意会清掉所有程序。'
+        ],
+        key: '按住复位键 → 点下载 → 立刻松开，这个动作能解决 SWD 引脚被复用导致的连接失败。'
+      },
+      {
+        id: 'mcu-reset',
+        name: '程序跑飞、反复复位、莫名死机',
+        causes: [
+          '看门狗开了但主循环里没喂狗',
+          '中断里死等（while 循环等标志位），把整个系统卡住',
+          '栈溢出或数组越界，踩坏了返回地址',
+          '电源跌落：电机、继电器、蜂鸣器动作瞬间拉低电压导致复位',
+          '中断标志没清，反复进同一个中断',
+          '中断优先级配置错误，高优先级一直抢占'
+        ],
+        steps: [
+          '先在主循环里翻转一个 GPIO，用示波器看这个脚。波形停了就是死机，有规律地重来就是复位。',
+          '关掉看门狗再跑。不再复位 → 就是没喂狗的问题。',
+          '检查所有 while 等待，加上超时退出。中断服务函数里绝不允许死等。',
+          '示波器 DC 耦合、长存储深度，抓复位瞬间的 VCC 波形。掉到 2.5V 以下就是电源问题。',
+          '把电机/继电器单独供电，控制信号用光耦或三极管隔离，续流二极管必须加。',
+          '增大启动文件的栈大小，检查所有数组下标边界。'
+        ],
+        key: '先用一个 GPIO 输出方波判断是"死机"还是"复位"。这两个方向的排查路径完全不同。'
+      }
+    ]
+  },
+  {
+    cat: '传感器与 ADC 采集',
+    cases: [
+      {
+        id: 'adc-fixed',
+        name: '采集值恒定不变、一直是 0 或 4095',
+        causes: [
+          '传感器没供电或接线错（VCC/GND 反接、信号线没接）',
+          'ADC 通道选错，或引脚没配置成模拟输入模式',
+          '参考电压没接或没使能',
+          '转换根本没启动，读到的是初始值',
+          'DMA/中断没配置好，读的是缓冲区旧数据',
+          '传感器本身是数字输出（如 DS18B20），却按模拟量读'
+        ],
+        steps: [
+          '万用表测传感器供电引脚电压，测输出引脚对地电压。输出恒为 0V 或 VCC → 传感器没工作。',
+          '把 ADC 输入脚直接接到已知电压（如 3.3V 分压到 1.65V），看读数对不对。对 → 问题在传感器侧；不对 → 问题在 ADC 配置侧。',
+          '查引脚复用表，确认这个引脚确实能作 ADC 输入，且已配置成模拟模式（不是普通 GPIO）。',
+          '查参考电压引脚实测值，确认 VREF 正常。',
+          '单步调试，确认转换启动位真的置位了，转换完成标志真的置位了。',
+          '确认传感器类型：数字传感器要走协议读，不能接 ADC。'
+        ],
+        key: '把 ADC 脚接一个已知电压做自检。这一招能立刻分清是采集侧还是传感器侧的问题。'
+      },
+      {
+        id: 'adc-noise',
+        name: '采集值跳动大、不稳定',
+        causes: [
+          '用 VCC 当参考电压，VCC 本身就在波动',
+          '模拟地和数字地共用，数字开关噪声耦合进模拟通道',
+          '采样保持时间不足，输入阻抗太高，采样电容充不满',
+          '没有滤波：既没硬件 RC，也没软件平均',
+          '杜邦线太长，天线效应引入干扰',
+          '传感器输出阻抗高，直接接 ADC 不合适'
+        ],
+        steps: [
+          '换用外部基准（如 TL431、REF3033）给 VREF，看跳动是否减小。',
+          '示波器看 ADC 输入脚的波形，有没有和数字信号同步的毛刺。有 → 是耦合干扰。',
+          '输入端加 RC 低通（如 1k + 0.1uF，截止约 1.6kHz），靠近 ADC 引脚放。',
+          '软件上加滑动平均（8~16 点）或中值滤波。测静态量用平均最有效。',
+          '模拟部分单独铺地，和数字地单点连接；传感器线尽量短，必要时用屏蔽线。',
+          '降低采样率，增加采样时间（SMP 位），让采样电容充分充电。'
+        ],
+        key: '静态量跳动，八成是参考电压不稳或地不干净。先把这两件事做对，再谈滤波。'
+      },
+      {
+        id: 'adc-linear',
+        name: '读数不准、线性度差、刻度对不上',
+        causes: [
+          '传感器本身非线性，没有做校准',
+          '运放电路有失调电压和偏置电流，没调零',
+          '分压/采样电阻精度不够（用了 5% 碳膜电阻）',
+          'ADC 有效位数低于标称值，低位是噪声',
+          '量程没算对：输入超出 ADC 范围导致削顶',
+          '温度漂移未补偿'
+        ],
+        steps: [
+          '用标准源或高精度万用表在 3~5 个点上测实际值和读数，列表对比，算出偏差曲线。',
+          '两点校准：测零点和满量程点，算出斜率和截距，做线性修正。非线性明显就做分段或多点拟合。',
+          '关键分压电阻换成 1% 金属膜或 0.1% 精密电阻。',
+          '检查输入信号最大值有没有超过 VREF。超了要做衰减。',
+          '让系统跑 30 分钟后再测，观察零点漂移量。漂移大就要做温补或选低温漂器件。'
+        ],
+        key: '校准不是作弊，是必须做的一步。报告里写清校准方法和校准后的误差，反而是加分项。'
+      }
+    ]
+  },
+  {
+    cat: '串口 / I2C / SPI 通信',
+    cases: [
+      {
+        id: 'uart-garble',
+        name: '串口收到乱码',
+        causes: [
+          '波特率不匹配，或主频配置错误导致实际波特率偏差超过 3%',
+          '用了内部 RC 振荡器，时钟精度不够',
+          '电平不匹配：3.3V TTL 直接对接 RS232 的 ±12V，或 5V 输出接 3.3V 输入',
+          'TX/RX 没有交叉连接（TX 接 TX）',
+          '没有共地',
+          '数据位/停止位/校验位设置不一致'
+        ],
+        steps: [
+          '双方波特率、数据位、停止位、校验位逐项核对，必须完全一致。',
+          '测实际波特率：发 0x55（01010101），示波器量一个位的宽度，算出实际速率，和设定值比。偏差 >3% 就会乱码。',
+          '确认时钟源。用内部 RC 时，主频偏差会直接放大成波特率误差，改用外部晶振。',
+          '万用表测两端 GND 是否连通。不共地时串口必乱码或时好时坏。',
+          '确认电平标准。3.3V 和 5V TTL 一般可以直连（看对方是否 5V 容忍），RS232 必须加 MAX232 类转换芯片。',
+          '把波特率降到 9600 试。降速后正常 → 说明是时钟精度或线长引起的误差累积。'
+        ],
+        key: '量实际位宽算波特率，比反复改代码有效得多。'
+      },
+      {
+        id: 'uart-none',
+        name: '串口完全收不到数据',
+        causes: [
+          '引脚复用/重映射没配置，信号没真正从引脚出来',
+          '发送使能（TE）没开，或串口外设时钟没使能',
+          '接收中断没使能，或中断标志没清',
+          'TX 引脚被配置成了输入模式',
+          'USB-TTL 模块的 RX 接到了单片机的 RX（应该接 TX）',
+          'USB-TTL 驱动没装，串口助手打开的是别的端口'
+        ],
+        steps: [
+          '示波器直接量单片机 TX 引脚。有波形 → 问题在线路或电脑侧；没波形 → 问题在配置或代码侧。',
+          '量的时候把探头地接到板子的 GND 上。悬空地量会得到假信号。',
+          '检查 GPIO 复用配置和串口外设时钟使能，这两处漏一处就没有输出。',
+          '用回环测试：把单片机的 TX 和 RX 短接，自发自收。通了说明串口外设正常，问题在外部链路。',
+          '换一根 USB 线、换一个 USB 口、确认设备管理器里的端口号。'
+        ],
+        key: '示波器量 TX 引脚有没有波形，一步分清是"没发出去"还是"没收进来"。'
+      },
+      {
+        id: 'i2c-fail',
+        name: 'I2C 无应答、读不到数据、总线卡死',
+        causes: [
+          'SDA/SCL 没有上拉电阻（一般 4.7k~10k）',
+          '从机地址搞错：7 位地址和 8 位地址（含读写位）混淆',
+          '从机没供电，或供电电压和主控不匹配',
+          '总线死锁：从机把 SDA 一直拉低，主控发不了起始条件',
+          '时序太快，杜邦线太长导致上升沿变缓',
+          '从机需要复位或初始化延时，主控发得太早'
+        ],
+        steps: [
+          '万用表测 SDA、SCL 对 VCC 的电阻，确认上拉存在且有电压。空闲时两根线都应为高电平。',
+          '查从机手册的地址，注意是 7 位还是 8 位。用扫描程序把 0x00~0x7F 全扫一遍，能扫到就说明地址对了。',
+          '降低 I2C 速率到 100kHz 或 50kHz 再试。',
+          '总线死锁时，把 SCL 当普通 GPIO 手动发 9 个时钟脉冲，再发一个停止条件，能解锁。',
+          '缩短连线，上拉电阻改小到 2.2k（注意别超过从机的灌电流能力）。',
+          '在初始化前加 10~100ms 延时，等从机上电稳定。'
+        ],
+        key: '先跑一个 I2C 地址扫描，5 分钟就能确认硬件链路和地址对不对。'
+      },
+      {
+        id: 'spi-zero',
+        name: 'SPI 读到全 0 或全 0xFF',
+        causes: [
+          'CPOL/CPHA 模式（模式 0~3）和从机要求不一致',
+          '片选 CS 时序不对：没拉低，或拉低太晚',
+          'MISO 没接，或从机没有输出使能',
+          '时钟极性反了，数据在错误的边沿被采样',
+          '从机供电缺失或复位没释放',
+          '速率太高，超过从机支持的最高时钟'
+        ],
+        steps: [
+          '查从机手册确认 SPI 模式（CPOL/CPHA），逐个模式试一遍，最快。',
+          '示波器同时看 CS、SCK、MOSI 三根线，确认 CS 拉低期间有时钟，且数据在正确边沿稳定。',
+          '把速率降到 1MHz 以下试。',
+          '读从机的 ID 寄存器（几乎每个传感器都有），能读到正确 ID 就说明通信通了。',
+          '确认 MISO 确实接到主控的 MISO 上，且没有虚焊。'
+        ],
+        key: '读器件 ID 是验证 SPI 链路最标准的做法，比读测量数据更快定位。'
+      }
+    ]
+  },
+  {
+    cat: '显示与人机界面',
+    cases: [
+      {
+        id: 'lcd-blank',
+        name: '屏幕白屏、黑屏、完全不显示',
+        causes: [
+          '背光/供电没接，或供电电压不对（有些屏需要专门的 VGH/VGL 电压）',
+          '复位时序不对：需要复位脉冲和足够延时',
+          '初始化序列错，或通信模式（并口/SPI/I2C）配置不对',
+          '排线接触不良或插反',
+          '对比度/亮度寄存器值不对（字符型 LCD 常见）',
+          '屏幕本身损坏'
+        ],
+        steps: [
+          '先测背光是否亮。背光都不亮，先解决供电。',
+          '用示波器看复位引脚有没有正确的复位脉冲，以及复位后的延时够不够。',
+          '字符型 LCD（1602）调对比度电位器，慢慢转，看有没有出现方块。这是最快的判断方法。',
+          '查初始化序列，逐条对照数据手册。OLED 的初始化命令尤其不能少。',
+          '换一块屏试，或者把这块屏接到已知正常的板子上试。'
+        ],
+        key: '先确认背光亮、复位对、初始化序列对。这三步覆盖九成的"完全不显示"。'
+      },
+      {
+        id: 'lcd-glitch',
+        name: '花屏、闪屏、显示撕裂',
+        causes: [
+          '刷新太快，没等屏幕的 BUSY 标志或没留足够延时',
+          '供电不足或纹波大，屏幕驱动电压不稳',
+          '排线过长或接触不良',
+          'SPI 速率超过屏幕支持上限',
+          '刷新时和 DMA/中断冲突，数据被打断',
+          '显存和屏幕实际分辨率不匹配'
+        ],
+        steps: [
+          '降低 SPI 速率和刷新频率，看花屏是否消失。',
+          '每次写数据后加 1~5ms 延时，或正确读 BUSY 标志。',
+          '在屏幕供电脚就近并 10uF + 0.1uF 电容。',
+          '缩短排线，重新插紧 FPC 座子。',
+          '刷新时关中断，或用 DMA 整块传输，避免数据被打断。'
+        ],
+        key: '花屏九成是刷新太快或者供电不干净。先降速，再查电源。'
+      },
+      {
+        id: 'seg-missing',
+        name: '数码管缺笔画、亮度不均、闪烁',
+        causes: [
+          '限流电阻计算错误，或某个段虚焊',
+          '动态扫描频率太低（低于 50Hz 会肉眼可见闪烁）',
+          'IO 口驱动电流不足，直接驱动多位数码管超限',
+          '共阴/共阳搞反，段码表用错',
+          '位选和段选时序有问题，出现鬼影'
+        ],
+        steps: [
+          '万用表二极管档逐个测每个段，确认 LED 本身完好。',
+          '提高扫描频率到 100Hz 以上（每位数码管点亮时间 1~2ms）。',
+          '段码表按共阴/共阳重新核对。搞反了会显示乱码或缺段。',
+          '加三极管或驱动芯片（如 74HC595、ULN2003）扩流，不要 IO 直驱。',
+          '消隐：切换位选前先关段选，切换后延时再开段选，避免鬼影。'
+        ],
+        key: '缺笔画先在硬件上确认那一段亮不亮，再去怀疑代码。'
+      }
+    ]
+  },
+  {
+    cat: '电机 / 继电器 / 执行器',
+    cases: [
+      {
+        id: 'motor-nogo',
+        name: '电机不转、只抖不转、转一下就停',
+        causes: [
+          '驱动芯片使能脚没拉高，或逻辑电平不匹配',
+          '电源电流不够，电机启动瞬间把电压拉塌，主控复位',
+          '步进电机相序接错，或脉冲频率给得太快（超过启动频率）',
+          'PWM 占空比为 0，或 PWM 定时器没启动',
+          '驱动芯片过热保护',
+          '机械卡死或负载过大'
+        ],
+        steps: [
+          '先空载测。空载能转 → 是负载或电流问题；空载也不转 → 是驱动或信号问题。',
+          '测驱动芯片的输入端有没有信号，输出端有没有电压变化。信号进得去、出不来 → 驱动芯片坏了或没使能。',
+          '示波器看电机供电电压，启动瞬间掉到多少。掉到 3V 以下就是电源功率不够，必须单独供电。',
+          '步进电机从低速开始给脉冲，逐步升频。一上来就给高频必然失步。',
+          '测驱动芯片温度，烫手就是过流或散热不够。',
+          '用万用表测电机线圈电阻，判断线圈是否烧断。'
+        ],
+        key: '电机一定要单独供电，和控制板只共地。这是硬规矩。'
+      },
+      {
+        id: 'motor-reset',
+        name: '电机/继电器一动，单片机就复位或死机',
+        causes: [
+          '电源共用，电机启动电流把主控电压拉塌',
+          '没有续流二极管，感性负载断电瞬间产生高压尖峰',
+          '地线共阻抗，大电流在地线上产生压降，导致主控的地被抬高',
+          '电机换向电刷产生电磁干扰，通过空间耦合',
+          '继电器线圈没有吸收回路'
+        ],
+        steps: [
+          '给电机单独供电（独立电源或独立稳压），只把 GND 和控制板连在一起。',
+          '在直流电机两端并续流二极管（如 1N5819），继电器线圈并 1N4148。反向并联，注意极性。',
+          '电机两端并 0.1uF 瓷片电容做火花吸收，外壳接地。',
+          '主控和电机的地在电源入口处单点共地，不要在板子中间随便连。',
+          '主控电源入口加 100uF 以上电解电容 + 磁珠，做储能和隔离。',
+          '控制信号用光耦隔离（如 PC817），彻底切断电气通路。'
+        ],
+        key: '这是课设里最经典的坑。续流二极管 + 独立供电，两件事做好，问题基本消失。'
+      },
+      {
+        id: 'relay-fail',
+        name: '继电器不吸合、粘连、触点打火',
+        causes: [
+          '驱动三极管基极电阻太大，驱动电流不够',
+          '线圈电压和供电不符（5V 继电器用 3.3V 驱动）',
+          '没有续流二极管，关断时反峰击穿三极管',
+          '触点电流超限，长期拉弧导致粘连',
+          '负载是感性或容性，冲击电流远大于额定值'
+        ],
+        steps: [
+          '测线圈两端电压，应接近额定值。不够就换驱动管或降低基极电阻。',
+          '确认三极管方向正确（NPN 射极接地），基极串 1k~4.7k 电阻。',
+          '线圈两端并联续流二极管，方向为反向（阴极接 VCC 侧）。',
+          '测负载实际电流，选触点容量留 2 倍余量。',
+          '感性负载加 RC 吸收或压敏电阻。'
+        ],
+        key: '继电器线圈是感性负载，没有续流二极管，三极管迟早被打穿。'
+      }
+    ]
+  },
+  {
+    cat: '无线通信（蓝牙 / WiFi / 2.4G / 433M）',
+    cases: [
+      {
+        id: 'rf-connect',
+        name: '无线模块连不上、搜不到',
+        causes: [
+          '模块供电不足：蓝牙/WiFi 发射瞬间电流可达 200mA 以上，USB 供电撑不住',
+          '串口参数配置不对（波特率、AT 指令格式、是否带换行）',
+          'AT 指令回复没等够时间，模块还没启动完就发指令',
+          '天线没接或接错，匹配网络损坏',
+          '工作模式没切对（透传模式 vs AT 模式）',
+          '模块固件版本与指令集不匹配'
+        ],
+        steps: [
+          '给模块单独供电，输入端并 100uF 以上电容，保证发射瞬间不掉压。',
+          '先发最基本的 AT 指令（如 AT），确认模块有回复。没回复先解决串口和供电。',
+          '上电后等 500ms~1s 再发指令，模块启动需要时间。',
+          '确认 AT 指令结尾是 \\r\\n 还是只 \\r，很多模块对换行敏感。',
+          '检查天线接口：IPEX 座子有没有真的插上，PCB 天线周围有没有铺地或金属遮挡。'
+        ],
+        key: '无线模块的供电要求比你想的高。发射瞬间的电流峰值是最常见的失败原因。'
+      },
+      {
+        id: 'rf-range',
+        name: '通信距离短、丢包严重',
+        causes: [
+          '天线被金属外壳或手遮挡、PCB 天线周围有铜箔',
+          '发射功率设得太低',
+          '信道拥挤（WiFi 2.4G 和蓝牙同频干扰）',
+          '供电不稳导致发射功率下降',
+          '波特率太高，空中速率跟不上',
+          '模块地平面不完整，辐射效率低'
+        ],
+        steps: [
+          '把模块移出金属外壳，手不要握住天线区域，再测距离。',
+          '把发射功率调到最大（AT 指令一般可设）。',
+          '换一个信道，避开周围 WiFi。',
+          '降低空中速率和串口波特率，提高链路余量。',
+          '检查模块下方的地平面是否完整，天线区域是否挖空。',
+          '缩短模块到主控的连线，SPI/串口线太长会引入干扰。'
+        ],
+        key: '先排除遮挡和手的影响，再调功率和信道。很多"距离短"其实是手挡住了天线。'
+      }
+    ]
+  },
+  {
+    cat: 'PCB 与焊接',
+    cases: [
+      {
+        id: 'pcb-dead',
+        name: 'PCB 打样回来整板不工作',
+        causes: [
+          '封装画错：引脚顺序镜像、焊盘间距不对、封装尺寸不匹配',
+          '电源网络短路（覆铜间距不够、过孔没盖油）',
+          '丝印方向标错，器件贴反',
+          '钻孔/过孔尺寸不对，插件插不进去',
+          '板厂的工艺能力达不到你的设计规则（线宽、间距太小）'
+        ],
+        steps: [
+          '对照原理图和 PCB 网表，逐个网络用万用表通断档核对（至少核对电源和关键信号）。',
+          '上电前先测电源对地电阻，接近 0 就是短路。用限流电源（限流 100mA）上电，摸哪里发烫就是短路点。',
+          '把芯片全部焊下，只测电源网络，确认电源本身正常后再逐个装芯片。',
+          '封装问题：拿卡尺量实际器件引脚间距，和 PCB 焊盘对比。',
+          '对照实物和丝印，确认所有极性器件方向正确。'
+        ],
+        key: '新板第一次上电一定用限流电源。直接怼 5V 可能烧掉整板芯片。'
+      },
+      {
+        id: 'solder-bad',
+        name: '怀疑虚焊、冷焊，但看不出问题',
+        causes: [
+          '焊锡量太少，焊盘和引脚没有真正熔合',
+          '焊接温度不够或时间太短，形成冷焊（表面粗糙、无光泽）',
+          '元件引脚氧化，锡不浸润',
+          'QFN/BGA 类封装底部焊盘没吃到锡',
+          '板子受潮，回流时产生气泡'
+        ],
+        steps: [
+          '放大镜或手机微距看焊点：正常焊点应该光亮、呈锥形、浸润角小。发暗、成球状、有裂纹都是不良。',
+          '用镊子轻推元件，能晃动就是虚焊。',
+          '怀疑哪个点就用烙铁重新补锡，加一点助焊剂。',
+          'QFN 封装用手压住再测功能，压住正常、松开不正常 → 底部焊盘虚焊，需要热风重新回流。',
+          '整板用热风枪均匀加热到 150℃ 烘 10 分钟去潮，再重新回流。'
+        ],
+        key: '虚焊最有效的判断方法是"按压测试"：手压住芯片功能恢复正常，就是引脚没焊好。'
+      },
+      {
+        id: 'short-find',
+        name: '板子短路，找不到短路点',
+        causes: [
+          '焊接时锡渣搭桥',
+          '芯片内部击穿',
+          '覆铜毛刺或过孔破孔',
+          '电解电容极性接反击穿',
+          '多层板内层短路（少见但存在）'
+        ],
+        steps: [
+          '断电，万用表电阻档测电源对地电阻，确认短路阻值。',
+          '用限流电源（限流 50~100mA，电压设标称值）上电，用手背轻触各芯片，最烫的那个通常是短路源。',
+          '有热成像仪最直接，一照就能看到发热点。',
+          '分段割线：把电源网络分段断开，逐段测，缩小范围。',
+          '逐个拆除怀疑的芯片（先拆电容类，再拆 IC），拆一个测一次。',
+          '检查是否有锡渣：倾斜板子对着光看，用细针刮一下密集引脚之间。'
+        ],
+        key: '限流电源 + 摸温度，是最便宜有效的短路定位法。'
+      }
+    ]
+  },
+  {
+    cat: '仿真软件（Multisim / Proteus / MATLAB / Quartus）',
+    cases: [
+      {
+        id: 'sim-proteus',
+        name: 'Proteus 里单片机不运行、不响应',
+        causes: [
+          '没有加载 .hex 文件，或加载的路径有中文',
+          '单片机属性里的时钟频率设置和代码里不一致',
+          '供电脚和地脚没连接（Proteus 某些元件不会自动隐藏电源脚）',
+          '复位电路没接，芯片一直在复位状态',
+          '元件模型版本不匹配（如 8051 型号选错）',
+          '代码编译时的优化导致延时函数被优化掉'
+        ],
+        steps: [
+          '双击单片机，确认 Program File 指向正确的 hex，文件名和路径尽量全英文。',
+          '确认 Clock Frequency 和你代码里配置的主频一致。不一致会导致时序全错。',
+          '检查 VCC/GND 是否显式连接，Proteus 里部分元件不会自动隐藏电源引脚。',
+          '加复位电路，或在属性里设置初始状态。',
+          '换一个同系列的型号试（如 AT89C51 换成 AT89C52）。',
+          '代码里把延时函数的变量声明成 volatile，防止被优化。'
+        ],
+        key: 'Proteus 里最常见的是时钟频率没设、hex 没加载、电源脚没接。按顺序排一遍。'
+      },
+      {
+        id: 'sim-multisim',
+        name: 'Multisim 仿真不收敛、报错或结果明显不对',
+        causes: [
+          '电路里有悬空节点，没有直流通路',
+          '缺少接地参考点',
+          '理想元件和实际不符（理想运放 vs 实际运放的失调和带宽）',
+          '仿真步长太大，高频信号被跳过',
+          '正反馈或振荡电路本身不稳定',
+          '电源极性接反'
+        ],
+        steps: [
+          '检查每个节点是否都有直流通路到地。悬空节点是收敛失败的头号原因。',
+          '确认电路里有且只有一个地（GND）符号，多处接地会造成冲突。',
+          '把仿真设置改成 Transient Analysis，最大步长设为信号周期的 1/100 以下。',
+          '增加迭代次数上限，或换用 Gear 积分方法。',
+          '把理想运放换成实际型号（如 LM358），看结果是否变化。',
+          '在关键节点加 1G 电阻到地，给悬空节点一个直流路径（仅用于调试）。'
+        ],
+        key: '仿真不收敛，先找悬空节点。给每个节点一条到地的直流通路，八成能解决。'
+      },
+      {
+        id: 'sim-matlab',
+        name: 'MATLAB/Simulink 报错或结果与理论不符',
+        causes: [
+          '代数环（直接馈通回路）导致求解失败',
+          '步长设置不当，固定步长太大导致数值发散',
+          '模块采样率不一致（连续和离散混用）',
+          '变量未初始化或工作区变量丢失',
+          'FFT 采样率与信号频率不满足采样定理'
+        ],
+        steps: [
+          '查报错信息里的模块路径，定位到具体模块。',
+          '在反馈回路里加 Unit Delay 或 Memory 模块打断代数环。',
+          '把求解器改成变步长 ode45，或固定步长减小到 1e-5。',
+          '统一所有模块的采样时间，连续模块和离散模块不要混用。',
+          'FFT 前确认采样率大于信号最高频率的 2 倍，采样点数取 2 的整数次幂。'
+        ],
+        key: '代数环和步长是 Simulink 报错的两大来源。先看报错指向哪个模块。'
+      }
+    ]
+  },
+  {
+    cat: '代码与逻辑',
+    cases: [
+      {
+        id: 'code-hang',
+        name: '程序卡死、不往下执行',
+        causes: [
+          '在 while 里等一个永远不会置位的标志',
+          '中断服务函数里做了耗时操作或死循环',
+          '硬件初始化时等某个就绪位，但硬件没接或没供电',
+          '栈溢出，程序跑飞',
+          '外设时钟没使能，读寄存器一直返回复位值'
+        ],
+        steps: [
+          '在主循环里翻转 GPIO 输出方波，示波器看波形停在哪一步。',
+          '用调试器暂停（Halt），看程序计数器停在哪个函数里。这是最快的定位方式。',
+          '给所有 while 等待加超时计数，超时就报错返回，不要死等。',
+          '检查栈大小，把 startup 文件里的 Stack_Size 改大试试。',
+          '逐个注释掉模块初始化，二分法定位到具体哪一句卡住。'
+        ],
+        key: '调试器 Halt 一下，看 PC 停在哪，比读代码猜快十倍。'
+      },
+      {
+        id: 'code-irq',
+        name: '中断不响应、进不去',
+        causes: [
+          '中断总开关没开（EA/__enable_irq）',
+          '具体中断的使能位没置位',
+          'NVIC 里的中断通道没使能（STM32 常见）',
+          '中断标志没清，第一次进不去或者进了出不来',
+          '中断优先级配置冲突',
+          '中断函数名和启动文件里的向量名不一致，实际没有链接上'
+        ],
+        steps: [
+          '在中断函数第一行翻转一个 GPIO，示波器看有没有动作。没有动作说明根本没进去。',
+          '确认中断总开关和具体使能位都置位了。',
+          'STM32 要额外检查 NVIC_EnableIRQ，只开外设使能位不够。',
+          '在中断入口先清标志，再处理逻辑。',
+          '查启动文件里的向量表，确认函数名拼写完全一致（比如 USART1_IRQHandler）。',
+          '用调试器在中断函数里设断点，看能不能停下。'
+        ],
+        key: '在中断入口翻转 GPIO 是最直接的验证方法，一眼看出有没有进去。'
+      },
+      {
+        id: 'code-data',
+        name: '数据错乱、变量被莫名改写',
+        causes: [
+          '数组越界，写到了相邻变量',
+          '中断和主循环同时访问同一个变量，没有加保护',
+          '指针未初始化或野指针',
+          '栈溢出覆盖了全局变量',
+          '多字节变量在中断里被部分更新（读到了半新半旧的值）',
+          '局部变量没初始化就使用'
+        ],
+        steps: [
+          '检查所有数组的下标范围，尤其是 for 循环的边界。',
+          '中断和主循环共享的变量加 volatile，读写时关中断或做双缓冲。',
+          '把出问题的变量地址打印出来，看它和哪个数组相邻。相邻说明是越界。',
+          '增大栈空间，或减少大的局部数组（改成全局或 static）。',
+          '所有变量定义时初始化，指针初始化为 NULL。'
+        ],
+        key: '变量被改写，八成是数组越界。看内存地址相邻关系能直接定位。'
+      }
+    ]
+  }
+];
+
+const GENERAL_METHODS = [
+  ['分而治之', '把系统切到最小可工作的单元，逐段验证。整机不工作时，先让最小系统工作。'],
+  ['替换法', '拿一个确定好的模块换掉怀疑对象。换完正常，问题就在被换掉的那个上。'],
+  ['对比法', '找一个正常工作的同类系统，对照测同一个点的电压和波形。差异点就是问题点。'],
+  ['信号追踪法', '从信号源开始，沿着链路一级一级测到输出。第一个异常的地方，就是故障位置。'],
+  ['隔离法', '断开后级测前级，断开负载测电源。把嫌疑范围一步步缩小。'],
+  ['记录法', '每次只改一个变量，改完立刻记录现象。同时改三处，你永远不知道是哪一处生效。']
+];
+
+/* ============ 状态 ============ */
+
+const KEY = 'cddesk.v1';
+let state = null;
+let diagSel = { cat: null, caseId: null };
+let pendingSave = null;
+
+function defaultState() {
+  return {
+    project: { title: '', course: '', deadline: '', brief: '', goal: '', scheme: '', stage: 0 },
+    tasks: {},
+    problems: [],
+    chat: { messages: [], model: '' },
+    docs: [],
+    docResult: '',
+    open: {},
+    updatedAt: null
+  };
+}
+
+function load() {
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (raw) {
+      const d = JSON.parse(raw);
+      state = Object.assign(defaultState(), d);
+      state.project = Object.assign(defaultState().project, d.project || {});
+      if (!Array.isArray(state.problems)) state.problems = [];
+      if (!state.tasks || typeof state.tasks !== 'object') state.tasks = {};
+      if (!state.chat || typeof state.chat !== 'object') state.chat = { messages: [], model: '' };
+      if (!Array.isArray(state.chat.messages)) state.chat.messages = [];
+      if (!Array.isArray(state.docs)) state.docs = [];
+      if (typeof state.docResult !== 'string') state.docResult = '';
+      if (!state.open || typeof state.open !== 'object' || Array.isArray(state.open)) state.open = {};
+    } else {
+      state = defaultState();
+    }
+  } catch (e) {
+    state = defaultState();
+  }
+}
+
+function save(silent) {
+  state.updatedAt = Date.now();
+  try {
+    localStorage.setItem(KEY, JSON.stringify(state));
+    if (!silent) flashSaved();
+  } catch (e) {
+    toast('保存失败：浏览器存储不可用');
+  }
+}
+
+function flashSaved() {
+  const el = document.getElementById('saveState');
+  const t = new Date();
+  const hh = String(t.getHours()).padStart(2, '0');
+  const mm = String(t.getMinutes()).padStart(2, '0');
+  el.textContent = '已保存 ' + hh + ':' + mm;
+  el.classList.add('on');
+  clearTimeout(flashSaved._t);
+  flashSaved._t = setTimeout(() => {
+    el.textContent = '本地自动保存';
+    el.classList.remove('on');
+  }, 2600);
+}
+
+let toastTimer = null;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('on');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('on'), 2200);
+}
+
+/* ============ 视图切换 ============ */
+
+document.querySelectorAll('nav button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const v = btn.dataset.view;
+    document.querySelectorAll('section').forEach(s => s.classList.remove('active'));
+    document.getElementById('view-' + v).classList.add('active');
+    if (v === 'roadmap') renderRoadmap();
+    if (v === 'log') renderLogs();
+    if (v === 'chat') renderChatGate();
+    window.scrollTo({ top: 0 });
+  });
+});
+
+/* ============ 项目档案 ============ */
+
+const projFields = {
+  'f-title': 'title',
+  'f-course': 'course',
+  'f-deadline': 'deadline',
+  'f-brief': 'brief',
+  'f-goal': 'goal',
+  'f-scheme': 'scheme'
+};
+
+function renderProject() {
+  Object.keys(projFields).forEach(id => {
+    const el = document.getElementById(id);
+    el.value = state.project[projFields[id]] || '';
+  });
+  const sel = document.getElementById('f-stage');
+  sel.innerHTML = STAGES.map((s, i) =>
+    '<option value="' + i + '">阶段 ' + (i + 1) + '：' + s.name + '</option>'
+  ).join('');
+  sel.value = String(state.project.stage || 0);
+
+  const pt = document.getElementById('pageTitle');
+  if (pt) {
+    const t = (state.project.title || '').trim();
+    pt.innerHTML = t ? esc(t) : '我的<em>课设</em>';
+  }
+  const pl = document.getElementById('pageLede');
+  if (pl) {
+    const bits = [];
+    if (state.project.course) bits.push(state.project.course);
+    if (state.project.deadline) bits.push(state.project.deadline + ' 交');
+    const si = state.project.stage || 0;
+    if (bits.length && STAGES[si]) bits.push('现在在阶段 ' + (si + 1) + '（' + STAGES[si].name + '）');
+    pl.textContent = bits.length
+      ? bits.join('，')
+      : '先填题目和任务书。往下每一页的判断，都拿它当基准。';
+  }
+}
+
+Object.keys(projFields).forEach(id => {
+  const el = document.getElementById(id);
+  el.addEventListener('input', () => {
+    state.project[projFields[id]] = el.value;
+    save();
+  });
+});
+
+document.getElementById('f-stage').addEventListener('change', e => {
+  state.project.stage = parseInt(e.target.value, 10) || 0;
+  save();
+});
+
+/* ============ 文档导入与设计思路提炼 ============ */
+
+const DOC_MAX_CHARS = 60000;
+const DOC_MAX_FILES = 6;
+let docBusy = false;
+let docPreviewId = null;
+
+function kindLabel(d) {
+  const parts = [String(d.kind || '').toUpperCase() || '文档'];
+  if (d.pages) parts.push(d.pages + ' 页');
+  parts.push((d.chars || 0).toLocaleString() + ' 字');
+  parts.push(Math.max(1, Math.round((d.size || 0) / 1024)) + ' KB');
+  return parts.join(' · ');
+}
+
+function inflateRawBytes(bytes) {
+  if (typeof DecompressionStream === 'undefined') {
+    return Promise.reject(new Error('浏览器不支持解压，请用新版 Chrome 或 Edge'));
+  }
+  const ds = new DecompressionStream('deflate-raw');
+  const stream = new Blob([bytes]).stream().pipeThrough(ds);
+  return new Response(stream).arrayBuffer().then(ab => new Uint8Array(ab));
+}
+
+function openZip(buffer) {
+  const u8 = new Uint8Array(buffer);
+  const dv = new DataView(buffer);
+  let eocd = -1;
+  const floor = Math.max(0, u8.length - 66000);
+  for (let i = u8.length - 22; i >= floor; i--) {
+    if (dv.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
+  }
+  if (eocd < 0) throw new Error('不是有效的 Office 文档');
+
+  const count = dv.getUint16(eocd + 10, true);
+  let p = dv.getUint32(eocd + 16, true);
+  const dec = new TextDecoder('utf-8');
+  const entries = {};
+
+  for (let i = 0; i < count; i++) {
+    if (p + 46 > u8.length || dv.getUint32(p, true) !== 0x02014b50) break;
+    const method = dv.getUint16(p + 10, true);
+    const csize = dv.getUint32(p + 20, true);
+    const fnLen = dv.getUint16(p + 28, true);
+    const exLen = dv.getUint16(p + 30, true);
+    const cmLen = dv.getUint16(p + 32, true);
+    const local = dv.getUint32(p + 42, true);
+    const name = dec.decode(u8.subarray(p + 46, p + 46 + fnLen));
+    entries[name] = { method: method, csize: csize, local: local };
+    p += 46 + fnLen + exLen + cmLen;
+  }
+
+  return {
+    names: Object.keys(entries),
+    has: function (name) { return !!entries[name]; },
+    read: async function (name) {
+      const e = entries[name];
+      if (!e) return '';
+      if (dv.getUint32(e.local, true) !== 0x04034b50) throw new Error('文档结构异常');
+      const fnLen = dv.getUint16(e.local + 26, true);
+      const exLen = dv.getUint16(e.local + 28, true);
+      const start = e.local + 30 + fnLen + exLen;
+      const raw = u8.subarray(start, start + e.csize);
+      if (e.method === 0) return dec.decode(raw);
+      if (e.method === 8) return dec.decode(await inflateRawBytes(raw));
+      throw new Error('文档用了不支持的压缩方式');
+    }
+  };
+}
+
+function xmlLines(xml, pTag, tTag) {
+  const doc = new DOMParser().parseFromString(xml, 'application/xml');
+  if (doc.getElementsByTagName('parsererror').length) return [];
+  const ps = doc.getElementsByTagName(pTag);
+  const out = [];
+  for (let i = 0; i < ps.length; i++) {
+    const ts = ps[i].getElementsByTagName(tTag);
+    let s = '';
+    for (let j = 0; j < ts.length; j++) s += ts[j].textContent;
+    s = s.replace(/[\s\u00a0]+/g, ' ').trim();
+    if (s) out.push(s);
+  }
+  return out;
+}
+
+async function parsePptx(buffer) {
+  const zip = openZip(buffer);
+  const num = function (n) {
+    const m = n.match(/(\d+)\.xml$/);
+    return m ? parseInt(m[1], 10) : 0;
+  };
+  const slides = zip.names
+    .filter(n => /^ppt\/slides\/slide\d+\.xml$/.test(n))
+    .sort((a, b) => num(a) - num(b));
+  if (!slides.length) throw new Error('找不到幻灯片内容，可能是旧版 .ppt，请另存为 .pptx');
+
+  const blocks = [];
+  for (let i = 0; i < slides.length; i++) {
+    const lines = xmlLines(await zip.read(slides[i]), 'a:p', 'a:t');
+    blocks.push('【第 ' + (i + 1) + ' 页】\n' + (lines.length ? lines.join('\n') : '（本页无文字，可能是图片）'));
+  }
+
+  const notes = zip.names
+    .filter(n => /^ppt\/notesSlides\/notesSlide\d+\.xml$/.test(n))
+    .sort((a, b) => num(a) - num(b));
+  for (let i = 0; i < notes.length && i < 40; i++) {
+    const lines = xmlLines(await zip.read(notes[i]), 'a:p', 'a:t').filter(l => !/^\d+$/.test(l));
+    if (lines.length) blocks.push('【第 ' + (i + 1) + ' 页备注】\n' + lines.join('\n'));
+  }
+  return { text: blocks.join('\n\n'), pages: slides.length };
+}
+
+async function parseDocx(buffer) {
+  const zip = openZip(buffer);
+  if (!zip.has('word/document.xml')) throw new Error('不是有效的 Word 文档');
+  const lines = xmlLines(await zip.read('word/document.xml'), 'w:p', 'w:t');
+  const seen = {};
+  const out = [];
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i];
+    if (l.length < 8 && seen[l]) continue;
+    seen[l] = 1;
+    out.push(l);
+  }
+  return { text: out.join('\n'), pages: 0 };
+}
+
+function decodePlain(buffer) {
+  const u8 = new Uint8Array(buffer);
+  let s = new TextDecoder('utf-8').decode(u8);
+  const bad = (s.match(/\uFFFD/g) || []).length;
+  if (bad > Math.max(3, s.length * 0.005)) {
+    try { s = new TextDecoder('gbk').decode(u8); } catch (e) { }
+  }
+  return s.replace(/^\uFEFF/, '');
+}
+
+async function ingestFile(file) {
+  const name = file.name || '未命名文件';
+  const ext = (name.split('.').pop() || '').toLowerCase();
+
+  if (ext === 'pdf') throw new Error('PDF 暂不支持，请另存为 docx/pptx，或把文字复制进任务书');
+  if (ext === 'ppt' || ext === 'doc') throw new Error('旧版格式不支持，请另存为 .' + ext + 'x 再上传');
+  if (['pptx', 'docx', 'txt', 'md', 'markdown'].indexOf(ext) < 0) {
+    throw new Error('只支持 pptx / docx / txt / md');
+  }
+  if (file.size > 25 * 1024 * 1024) throw new Error('文件超过 25MB');
+
+  const buffer = await file.arrayBuffer();
+  let r;
+  if (ext === 'pptx') r = await parsePptx(buffer);
+  else if (ext === 'docx') r = await parseDocx(buffer);
+  else r = { text: decodePlain(buffer), pages: 0 };
+
+  let text = (r.text || '').trim();
+  if (!text) throw new Error('没提取到文字，可能是图片版或扫描件');
+  if (text.length > DOC_MAX_CHARS) text = text.slice(0, DOC_MAX_CHARS) + '\n\n…（超出长度已截断）';
+
+  state.docs = (state.docs || []).filter(d => d.name !== name);
+  state.docs.unshift({
+    id: 'd' + Date.now() + Math.random().toString(36).slice(2, 6),
+    name: name,
+    kind: ext,
+    size: file.size,
+    pages: r.pages || 0,
+    chars: text.length,
+    text: text,
+    at: Date.now()
+  });
+  if (state.docs.length > DOC_MAX_FILES) state.docs = state.docs.slice(0, DOC_MAX_FILES);
+  save();
+  return true;
+}
+
+async function ingestFiles(fileList) {
+  if (docBusy) return;
+  const files = Array.from(fileList || []);
+  if (!files.length) return;
+
+  docBusy = true;
+  const drop = document.getElementById('drop');
+  drop.classList.add('busy');
+  let ok = 0;
+  const errs = [];
+
+  try {
+    for (const f of files) {
+      try {
+        if (await ingestFile(f)) ok++;
+      } catch (e) {
+        errs.push(f.name + '：' + (e && e.message ? e.message : '解析失败'));
+      }
+    }
+  } finally {
+    docBusy = false;
+    drop.classList.remove('busy');
+    renderDocs();
+  }
+
+  if (errs.length) toast(errs[0]);
+  else if (ok) toast('已解析 ' + ok + ' 份文档，可以点「AI 提炼设计思路」');
+}
+
+function renderDocs() {
+  const docs = state.docs || [];
+  const list = document.getElementById('docList');
+  const acts = document.getElementById('docActs');
+  const tip = document.getElementById('analyzeTip');
+
+  if (!docs.length) {
+    list.innerHTML = '';
+    acts.style.display = 'none';
+  } else {
+    list.innerHTML = docs.map(function (d) {
+      return '<div class="doc" data-id="' + esc(d.id) + '">' +
+        '<div><div class="dn">' + esc(d.name) + '</div><div class="dm">' + esc(kindLabel(d)) + '</div></div>' +
+        '<div class="dx">' +
+        '<button class="ghost" data-act="preview">看原文</button>' +
+        '<button class="ghost del" data-act="del">删除</button>' +
+        '</div></div>';
+    }).join('');
+    acts.style.display = 'flex';
+    const total = docs.reduce((s, d) => s + (d.chars || 0), 0);
+    tip.textContent = '共 ' + docs.length + ' 份 · ' + total.toLocaleString() + ' 字';
+  }
+  renderDocResult();
+}
+
+function renderDocResult() {
+  const box = document.getElementById('docRes');
+  const body = document.getElementById('docResBody');
+  if (!state.docResult) {
+    box.style.display = 'none';
+    body.innerHTML = '';
+    return;
+  }
+  box.style.display = 'block';
+  body.innerHTML = mdToHtml(state.docResult);
+}
+
+function toggleDocPreview(id) {
+  const area = document.getElementById('docArea');
+  if (docPreviewId === id) {
+    docPreviewId = null;
+    area.innerHTML = '';
+    return;
+  }
+  const d = (state.docs || []).find(x => x.id === id);
+  if (!d) return;
+  docPreviewId = id;
+  area.innerHTML = '<div class="doc-body">' + esc(d.text) + '</div>';
+}
+
+const DOC_PROMPT = [
+  '你是电子信息类课程设计的指导老师。用户上传了自己课程设计的 PPT 或项目书，下面是从文件里提取出来的文字。',
+  '你的任务：把它整理成一份结构化的设计说明，供后续指导使用。',
+  '',
+  '输出格式（严格遵守，每一节都用二级标题，标题文字一字不改）：',
+  '## 题目',
+  '一句话题目；看不出就写「文档未明确」。',
+  '## 任务书核心要求',
+  '分点列出功能、指标、必须完成的项。只写文档里有的。',
+  '## 最终呈现效果',
+  '做完之后能演示出什么、验收时看什么。',
+  '## 技术方案与设计思路',
+  '主控或核心器件、整体框图思路、各模块职责、关键技术点。文档没写的部分标注「文档未提及」。',
+  '## 关键器件与模块',
+  '逐项列清单，格式：器件名 — 用途。',
+  '## 阶段判断',
+  '依据文档内容判断目前进展到哪一步，给出理由。',
+  '## 风险与建议',
+  '列出 3 到 5 条这个设计最容易出问题的地方，每条配一个可执行的应对动作。',
+  '',
+  '规则：',
+  '1. 只依据提取文字，绝不编造器件型号、参数和指标；文档没有的不许补。',
+  '2. 提取文字可能夹杂页码、页眉页脚、重复标题，忽略它们。',
+  '3. 不写套话，不写「希望对你有帮助」。',
+  '4. 中文回答，短句分点，不写大段散文。'
+].join('\n');
+
+async function analyzeDocs() {
+  if (!state.docs || !state.docs.length) { toast('先上传一份文档'); return; }
+  if (!canUseAI()) { toast('需要授权后才能用 AI 提炼'); return; }
+  if (!cloud) { toast('云服务未连接，请通过发布链接打开'); return; }
+  if (!modelId) { toast('没有可用模型，稍后重试'); return; }
+
+  const btn = document.getElementById('btnAnalyze');
+  const oldTxt = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '提炼中…';
+
+  let src = state.docs.map(d => '=== 文件：' + d.name + ' ===\n' + d.text).join('\n\n');
+  if (src.length > 26000) src = src.slice(0, 26000) + '\n\n…（文档过长已截断）';
+
+  const box = document.getElementById('docRes');
+  const body = document.getElementById('docResBody');
+  box.style.display = 'block';
+  body.innerHTML = '<span class="kv">正在读文档…</span>';
+
+  let acc = '';
+  let last = 0;
+  try {
+    const stream = cloud.llm.chat.completions.create({
+      model: modelId,
+      messages: [
+        { role: 'system', content: DOC_PROMPT },
+        { role: 'user', content: '这是从文件里提取出的文字：\n\n' + src }
+      ],
+      stream: true,
+      stream_options: { include_usage: true },
+      temperature: 0.3
+    });
+    for await (const chunk of stream) {
+      const d = chunk.choices && chunk.choices[0] && chunk.choices[0].delta;
+      if (d && d.content) {
+        acc += d.content;
+        const now = Date.now();
+        if (now - last > 90) {
+          last = now;
+          body.innerHTML = mdToHtml(acc);
+        }
+      }
+    }
+    if (!acc) {
+      body.innerHTML = '<span class="kv">模型没有返回内容，请重试。</span>';
+    } else {
+      body.innerHTML = mdToHtml(acc);
+      state.docResult = acc;
+      save();
+    }
+  } catch (e) {
+    body.innerHTML = '<span class="kv">出错：' + esc(errText(e)) + '</span>';
+    if (acc) { state.docResult = acc; save(); }
+  } finally {
+    btn.disabled = false;
+    btn.textContent = oldTxt;
+  }
+}
+
+function splitSections(text) {
+  const out = [];
+  let cur = null;
+  String(text || '').split('\n').forEach(line => {
+    const h = line.match(/^\s*#{1,4}\s*(.+?)\s*$/) || line.match(/^\s*【(.+?)】\s*$/);
+    if (h) {
+      cur = { t: h[1].replace(/[#【】*]/g, '').trim(), b: [] };
+      out.push(cur);
+    } else if (cur) {
+      cur.b.push(line);
+    }
+  });
+  return out.map(s => ({ t: s.t, b: s.b.join('\n').trim() }));
+}
+
+function pickSection(secs, keys) {
+  const s = secs.find(x => keys.some(k => x.t.indexOf(k) >= 0));
+  return s ? s.b : '';
+}
+
+function firstLineOf(s) {
+  const line = String(s || '').split('\n')
+    .map(x => x.replace(/^[-*\s]+/, '').replace(/^\d+[.）)]\s*/, '').trim())
+    .filter(Boolean)[0] || '';
+  return line.replace(/[`*#]/g, '').slice(0, 120);
+}
+
+function fillFromDocs() {
+  const secs = splitSections(state.docResult || '');
+  if (!secs.length) { toast('还没有提炼结果，先点「AI 提炼设计思路」'); return; }
+
+  const map = {
+    title: firstLineOf(pickSection(secs, ['题目', '课题'])),
+    brief: pickSection(secs, ['任务书', '要求', '指标']),
+    goal: pickSection(secs, ['呈现', '效果', '成果', '验收']),
+    scheme: pickSection(secs, ['技术方案', '设计思路', '方案'])
+  };
+  const names = { title: '题目', brief: '任务书要求', goal: '最终效果', scheme: '我的方案' };
+  const filled = Object.keys(map).filter(k => map[k]);
+  if (!filled.length) { toast('没解析出可填的段落'); return; }
+
+  const conflict = filled.filter(k => (state.project[k] || '').trim() && state.project[k].trim() !== map[k].trim());
+  let overwrite = true;
+  if (conflict.length) {
+    overwrite = confirm('这些栏位已有内容，会被覆盖：\n' +
+      conflict.map(k => '· ' + names[k]).join('\n') +
+      '\n\n点「确定」全部覆盖；点「取消」只填空白栏位。');
+  }
+  filled.forEach(k => {
+    if (overwrite || !(state.project[k] || '').trim()) state.project[k] = map[k];
+  });
+  save();
+  renderProject();
+  toast(overwrite ? '已填入 ' + filled.length + ' 个栏位' : '已填入空白栏位');
+}
+
+const dropEl = document.getElementById('drop');
+dropEl.addEventListener('click', () => document.getElementById('docInput').click());
+dropEl.addEventListener('dragover', e => { e.preventDefault(); dropEl.classList.add('over'); });
+dropEl.addEventListener('dragleave', e => { e.preventDefault(); dropEl.classList.remove('over'); });
+dropEl.addEventListener('drop', e => {
+  e.preventDefault();
+  dropEl.classList.remove('over');
+  if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length) {
+    ingestFiles(e.dataTransfer.files);
+  }
+});
+window.addEventListener('dragover', e => e.preventDefault());
+window.addEventListener('drop', e => {
+  if (!dropEl.contains(e.target)) e.preventDefault();
+});
+
+document.getElementById('docInput').addEventListener('change', e => {
+  ingestFiles(e.target.files);
+  e.target.value = '';
+});
+
+document.getElementById('docList').addEventListener('click', e => {
+  const btn = e.target.closest('button[data-act]');
+  if (!btn) return;
+  const row = btn.closest('.doc');
+  const id = row && row.dataset.id;
+  if (!id) return;
+
+  if (btn.dataset.act === 'preview') { toggleDocPreview(id); return; }
+
+  if (btn.dataset.act === 'del') {
+    state.docs = (state.docs || []).filter(d => d.id !== id);
+    if (docPreviewId === id) {
+      docPreviewId = null;
+      document.getElementById('docArea').innerHTML = '';
+    }
+    save();
+    renderDocs();
+    toast('已移除');
+  }
+});
+
+document.getElementById('btnAnalyze').addEventListener('click', analyzeDocs);
+document.getElementById('btnFill').addEventListener('click', fillFromDocs);
+
+document.getElementById('btnResCopy').addEventListener('click', () => {
+  const t = state.docResult || '';
+  if (!t) { toast('没有内容'); return; }
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(t).then(() => toast('已复制'), () => toast('复制失败，请手动选中'));
+  } else {
+    toast('浏览器不支持剪贴板');
+  }
+});
+
+document.getElementById('btnResClear').addEventListener('click', () => {
+  state.docResult = '';
+  save();
+  renderDocResult();
+  toast('已清除');
+});
+
+/* ============ 制作路线 ============ */
+
+function renderRoadmap() {
+  const wrap = document.getElementById('stageList');
+  let total = 0, done = 0;
+
+  wrap.innerHTML = STAGES.map((st, si) => {
+    const stageDone = st.tasks.every((_, ti) => state.tasks[si + '-' + ti]);
+    const isCur = si === (state.project.stage || 0);
+    const isOpen = (typeof state.open[si] === 'boolean')
+      ? state.open[si]
+      : (isCur || (!stageDone && si === firstUnfinished()));
+    const tasksHtml = st.tasks.map((t, ti) => {
+      const k = si + '-' + ti;
+      const ck = !!state.tasks[k];
+      total++; if (ck) done++;
+      return '<label class="task ' + (ck ? 'checked' : '') + '">' +
+        '<input type="checkbox" data-k="' + k + '" ' + (ck ? 'checked' : '') + '>' +
+        '<span><span class="t">' + esc(t.t) + '</span><span class="d">' + esc(t.d) + '</span></span>' +
+        '</label>';
+    }).join('');
+
+    return '<div class="stage ' + (stageDone ? 'done ' : '') + (isCur ? 'cur ' : '') + (isOpen ? 'open' : '') + '" data-si="' + si + '">' +
+      '<div class="stage-head">' +
+        '<span class="stage-no">' + (stageDone ? '✓' : (si + 1)) + '</span>' +
+        '<span class="stage-title">' + esc(st.name) + '</span>' +
+        '<span class="stage-meta">' + st.tasks.filter((_, ti) => state.tasks[si + '-' + ti]).length + '/' + st.tasks.length + '</span>' +
+      '</div>' +
+      '<div class="stage-body">' +
+        '<div class="stage-goal"><b>这一步的目标：</b>' + esc(st.goal) + '</div>' +
+        tasksHtml +
+        '<div class="traps"><div class="traps-t">容易踩的坑</div><ul>' +
+          st.traps.map(t => '<li>' + esc(t) + '</li>').join('') +
+        '</ul></div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+
+  const pct = total ? Math.round(done / total * 100) : 0;
+  document.getElementById('progBar').style.width = pct + '%';
+  document.getElementById('progText').textContent = done + ' / ' + total;
+
+  wrap.querySelectorAll('.task input').forEach(ck => {
+    ck.addEventListener('change', e => {
+      const k = e.target.dataset.k;
+      if (e.target.checked) state.tasks[k] = true;
+      else delete state.tasks[k];
+      save();
+      renderRoadmap();
+    });
+  });
+
+  wrap.querySelectorAll('.stage-head').forEach(h => {
+    h.addEventListener('click', () => {
+      const el = h.parentElement;
+      const on = el.classList.toggle('open');
+      state.open[el.dataset.si] = on;
+      save(true);
+    });
+  });
+}
+
+function firstUnfinished() {
+  for (let i = 0; i < STAGES.length; i++) {
+    if (!STAGES[i].tasks.every((_, ti) => state.tasks[i + '-' + ti])) return i;
+  }
+  return 0;
+}
+
+/* ============ 问题诊断 ============ */
+
+function renderCats() {
+  const wrap = document.getElementById('catChips');
+  wrap.innerHTML = DIAG.map((d, i) =>
+    '<div class="chip ' + (diagSel.cat === i ? 'on' : '') + '" data-i="' + i + '">' + esc(d.cat) + '</div>'
+  ).join('');
+  wrap.querySelectorAll('.chip').forEach(c => {
+    c.addEventListener('click', () => {
+      diagSel.cat = parseInt(c.dataset.i, 10);
+      diagSel.caseId = null;
+      renderCats();
+      renderSyms();
+      document.getElementById('resultArea').innerHTML = '';
+    });
+  });
+}
+
+function renderSyms() {
+  const card = document.getElementById('symCard');
+  const list = document.getElementById('symList');
+  if (diagSel.cat === null) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+  const d = DIAG[diagSel.cat];
+  document.getElementById('symTitle').textContent = d.cat + '：选一个最接近的现象';
+  list.innerHTML = d.cases.map(c =>
+    '<div class="sym ' + (diagSel.caseId === c.id ? 'on' : '') + '" data-id="' + c.id + '">' + esc(c.name) + '</div>'
+  ).join('');
+  list.querySelectorAll('.sym').forEach(el => {
+    el.addEventListener('click', () => {
+      diagSel.caseId = el.dataset.id;
+      renderSyms();
+      renderResult();
+    });
+  });
+}
+
+function renderResult() {
+  const area = document.getElementById('resultArea');
+  if (diagSel.cat === null || !diagSel.caseId) { area.innerHTML = ''; return; }
+  const c = DIAG[diagSel.cat].cases.find(x => x.id === diagSel.caseId);
+  if (!c) return;
+
+  area.innerHTML =
+    '<div class="card result">' +
+      '<h3>' + esc(c.name) + '</h3>' +
+      (c.key ? '<div class="keypoint"><b>先看这句：</b>' + esc(c.key) + '</div>' : '') +
+      '<div class="block"><div class="block-t">可能的原因（按可能性从高到低）</div>' +
+        '<ol class="causes">' + c.causes.map(x => '<li>' + esc(x) + '</li>').join('') + '</ol></div>' +
+      '<div class="block"><div class="block-t">按顺序执行</div>' +
+        '<ol class="steps">' + c.steps.map(x => '<li>' + esc(x) + '</li>').join('') + '</ol></div>' +
+      '<div style="display:flex;gap:8px;margin-top:16px">' +
+        '<button class="primary" id="btnSaveProb">保存到问题记录</button>' +
+      '</div>' +
+    '</div>' +
+    '<div class="card">' +
+      '<h2>以上都对不上？用通用排查法</h2>' +
+      '<p class="hint">六种方法的固定顺序，任何电子系统都适用。</p>' +
+      '<ul class="general">' + GENERAL_METHODS.map(m =>
+        '<li><b>' + esc(m[0]) + '</b>：' + esc(m[1]) + '</li>'
+      ).join('') + '</ul>' +
+    '</div>';
+
+  document.getElementById('btnSaveProb').addEventListener('click', () => openSaveModal(c));
+}
+
+function openSaveModal(c) {
+  pendingSave = c;
+  document.getElementById('m-title').value = DIAG[diagSel.cat].cat + '：' + c.name;
+  document.getElementById('m-note').value = '';
+  document.getElementById('modalBg').classList.add('on');
+  setTimeout(() => document.getElementById('m-note').focus(), 50);
+}
+
+document.getElementById('m-cancel').addEventListener('click', () => {
+  document.getElementById('modalBg').classList.remove('on');
+  pendingSave = null;
+});
+document.getElementById('modalBg').addEventListener('click', e => {
+  if (e.target.id === 'modalBg') {
+    document.getElementById('modalBg').classList.remove('on');
+    pendingSave = null;
+  }
+});
+document.getElementById('m-ok').addEventListener('click', () => {
+  const title = document.getElementById('m-title').value.trim();
+  if (!title) { toast('标题不能为空'); return; }
+  const note = document.getElementById('m-note').value.trim();
+  state.problems.unshift({
+    id: 'p' + Date.now(),
+    title: title,
+    note: note,
+    cat: pendingSave ? DIAG[diagSel.cat].cat : '',
+    causes: pendingSave ? pendingSave.causes.slice() : [],
+    steps: pendingSave ? pendingSave.steps.slice() : [],
+    resolved: false,
+    ts: Date.now()
+  });
+  save();
+  renderLogs();
+  document.getElementById('modalBg').classList.remove('on');
+  pendingSave = null;
+  toast('已保存到问题记录');
+});
+
+/* ============ 问题记录 ============ */
+
+function renderLogs() {
+  const wrap = document.getElementById('logList');
+  if (!state.problems.length) {
+    wrap.innerHTML = '<div class="empty">还没有记录。在「问题诊断」里找到原因后可以一键保存，也可以手动记一条。</div>';
+    return;
+  }
+  wrap.innerHTML = state.problems.map((p, i) => {
+    const d = new Date(p.ts);
+    const dateStr = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    return '<div class="log-item" data-i="' + i + '">' +
+      '<div class="log-head">' +
+        '<span class="log-title">' + esc(p.title) + '</span>' +
+        '<span class="tag ' + (p.resolved ? 'done-t' : 'open-t') + '">' + (p.resolved ? '已解决' : '未解决') + '</span>' +
+        (p.cat ? '<span class="tag">' + esc(p.cat) + '</span>' : '') +
+        '<span class="tag" style="margin-left:auto">' + dateStr + '</span>' +
+      '</div>' +
+      (p.note ? '<div class="log-fix">' + esc(p.note) + '</div>' : '') +
+      (p.causes && p.causes.length ? '<details style="font-size:12.5px;margin-bottom:8px"><summary style="cursor:pointer">查看当时的诊断结果（' + p.causes.length + ' 条可能原因）</summary><ol class="causes" style="margin-top:8px">' + p.causes.map(x => '<li>' + esc(x) + '</li>').join('') + '</ol></details>' : '') +
+      '<div class="log-acts">' +
+        '<button data-act="toggle" data-i="' + i + '">' + (p.resolved ? '标记未解决' : '标记已解决') + '</button>' +
+        '<button data-act="edit" data-i="' + i + '">补充备注</button>' +
+        '<button data-act="del" data-i="' + i + '" class="danger">删除</button>' +
+      '</div>' +
+      '<div class="note-box" style="display:none" data-box="' + i + '">' +
+        '<textarea data-note="' + i + '" placeholder="补充处理过程或结论…">' + esc(p.note || '') + '</textarea>' +
+        '<div style="display:flex;gap:8px;margin-top:8px"><button class="primary" data-act="savenote" data-i="' + i + '">保存备注</button></div>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+
+  wrap.querySelectorAll('button[data-act]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const i = parseInt(btn.dataset.i, 10);
+      const act = btn.dataset.act;
+      if (act === 'toggle') {
+        state.problems[i].resolved = !state.problems[i].resolved;
+        save(); renderLogs();
+      } else if (act === 'del') {
+        if (confirm('删除这条记录？')) {
+          state.problems.splice(i, 1);
+          save(); renderLogs();
+        }
+      } else if (act === 'edit') {
+        const box = wrap.querySelector('[data-box="' + i + '"]');
+        box.style.display = box.style.display === 'none' ? 'block' : 'none';
+        box.querySelector('textarea').focus();
+      } else if (act === 'savenote') {
+        const ta = wrap.querySelector('[data-note="' + i + '"]');
+        state.problems[i].note = ta.value.trim();
+        save(); renderLogs(); toast('备注已保存');
+      }
+    });
+  });
+}
+
+document.getElementById('btnNewLog').addEventListener('click', () => {
+  document.getElementById('m-title').value = '';
+  document.getElementById('m-note').value = '';
+  pendingSave = null;
+  document.getElementById('modalBg').classList.add('on');
+  setTimeout(() => document.getElementById('m-title').focus(), 50);
+});
+
+/* ============ 登录与授权 ============ */
+
+let session = null;
+let myRow = null;
+let isAdmin = false;
+let pendingEmailOtp = null;
+
+function uidOf(s) {
+  if (!s || !s.user) return '';
+  return s.user.id || s.user.uid || s.user.userId || '';
+}
+
+function userNameOf(s) {
+  if (!s || !s.user) return '';
+  return s.user.name || s.user.email || s.user.phone || '';
+}
+
+function accessState() {
+  if (!cloud) return 'no-cloud';
+  if (!session) return 'signed-out';
+  if (!myRow) return 'no-row';
+  return myRow.status;
+}
+
+function canUseAI() {
+  return accessState() === 'approved';
+}
+
+async function ensureUserRow() {
+  if (!session) return;
+  const uid = uidOf(session);
+  if (!uid) return;
+  const { data } = await cloud.database.from('app_users').select('id').eq('user_id', uid).maybeSingle();
+  if (data) return;
+  await cloud.database.from('app_users').insert({
+    display_name: userNameOf(session) || null
+  }).select();
+}
+
+async function loadMyRow() {
+  if (!session) { myRow = null; return; }
+  const uid = uidOf(session);
+  if (!uid) { myRow = null; return; }
+  const { data } = await cloud.database.from('app_users').select('*').eq('user_id', uid).maybeSingle();
+  myRow = data || null;
+}
+
+async function loadAdminFlag() {
+  if (!session) { isAdmin = false; return; }
+  const { data } = await cloud.database.from('app_admins').select('user_id');
+  isAdmin = !!(data && data.length);
+}
+
+async function refreshAuthState() {
+  if (!cloud) { renderAuthBox(); return; }
+  const { data, error } = await cloud.auth.getSession();
+  if (error || !data) {
+    session = null; myRow = null; isAdmin = false;
+    renderAuthBox(); renderChatGate();
+    return;
+  }
+  session = data;
+  await ensureUserRow();
+  await loadMyRow();
+  await loadAdminFlag();
+  renderAuthBox();
+  renderChatGate();
+}
+
+function renderAuthBox() {
+  const box = document.getElementById('authBox');
+  if (!cloud) { box.innerHTML = ''; return; }
+
+  if (!session) {
+    box.innerHTML = '<button id="btnLogin" class="primary">登录</button>';
+    document.getElementById('btnLogin').onclick = openLogin;
+    return;
+  }
+
+  const st = accessState();
+  let badge = '<span class="badge wait">同步中</span>';
+  if (st === 'approved') badge = '<span class="badge ok">已授权</span>';
+  else if (st === 'pending') badge = '<span class="badge wait">待授权</span>';
+  else if (st === 'rejected') badge = '<span class="badge no">已拒绝</span>';
+
+  box.innerHTML =
+    '<div class="auth-user"><span class="auth-name">' + esc(userNameOf(session) || '已登录') + '</span>' + badge + '</div>' +
+    (isAdmin ? '<button id="btnAdmin" class="ghost">审批</button>' : '') +
+    '<button id="btnLogout" class="ghost">退出</button>';
+
+  if (isAdmin) document.getElementById('btnAdmin').onclick = openAdmin;
+  document.getElementById('btnLogout').onclick = async () => {
+    await cloud.auth.signOut();
+    session = null; myRow = null; isAdmin = false;
+    renderAuthBox(); renderChatGate();
+    toast('已退出');
+  };
+}
+
+function openLogin() {
+  document.getElementById('loginModal').classList.add('on');
+}
+
+async function loginWithWorkBuddy() {
+  const back = new URL(location.href);
+  back.pathname = '/';
+  for (const k of ['code', 'state', 'provider']) back.searchParams.delete(k);
+  const { data, error } = await cloud.auth.signInWithOAuth({
+    provider: 'workbuddy',
+    redirectTo: back.toString()
+  });
+  if (error) { toast('登录失败：' + (error.message || '未知错误')); return; }
+  location.assign(data.url);
+}
+
+async function sendCode() {
+  const email = document.getElementById('emailInput').value.trim();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { toast('请输入正确的邮箱地址'); return; }
+  const btn = document.getElementById('btnSendCode');
+  if (btn.disabled) return;
+  btn.disabled = true;
+  btn.textContent = '发送中';
+  const sent = await cloud.auth.sendOtp({ email: email });
+  if (sent.error) {
+    toast('发送失败：' + (sent.error.message || '未知错误'));
+    btn.disabled = false; btn.textContent = '获取验证码';
+    return;
+  }
+  pendingEmailOtp = {
+    email: email,
+    verificationId: sent.data.verificationId,
+    isExistingUser: sent.data.isExistingUser
+  };
+  let n = 60;
+  btn.textContent = n + ' 秒';
+  const timer = setInterval(() => {
+    n--;
+    btn.textContent = n + ' 秒';
+    if (n <= 0) { clearInterval(timer); btn.disabled = false; btn.textContent = '获取验证码'; }
+  }, 1000);
+  toast('验证码已发送，请查收邮箱');
+}
+
+async function submitEmailLogin() {
+  const email = document.getElementById('emailInput').value.trim();
+  const token = document.getElementById('otpInput').value.trim();
+  if (!pendingEmailOtp || pendingEmailOtp.email !== email) { toast('请先获取验证码'); return; }
+  if (!token) { toast('请输入验证码'); return; }
+  const r = await cloud.auth.verifyOtp({
+    email: pendingEmailOtp.email,
+    verificationId: pendingEmailOtp.verificationId,
+    isExistingUser: pendingEmailOtp.isExistingUser,
+    token: token
+  });
+  if (r.error) { toast('验证失败：' + (r.error.message || '未知错误')); return; }
+  pendingEmailOtp = null;
+  document.getElementById('loginModal').classList.remove('on');
+  await refreshAuthState();
+  toast('登录成功');
+}
+
+async function restoreAuth() {
+  const url = new URL(location.href);
+  if (!url.searchParams.has('code') && !url.searchParams.has('error')) {
+    await refreshAuthState();
+    return;
+  }
+  const provider = url.searchParams.get('provider');
+  if (provider !== 'workbuddy') {
+    toast('登录回调缺少有效方式，请重新登录');
+    await refreshAuthState();
+    return;
+  }
+  if (typeof cloud.auth.handleWorkBuddyCallback !== 'function') {
+    toast('当前环境不支持该登录方式，请刷新页面');
+    return;
+  }
+  const { data, error } = await cloud.auth.handleWorkBuddyCallback.call(cloud.auth);
+  if (error) { toast('登录失败：' + (error.message || '未知错误')); return; }
+  if (data) {
+    for (const k of ['code', 'state', 'provider']) url.searchParams.delete(k);
+    history.replaceState(null, '', url.pathname + url.search + url.hash);
+    await refreshAuthState();
+    toast('登录成功');
+  } else {
+    await refreshAuthState();
+  }
+}
+
+function renderChatGate() {
+  const log = document.getElementById('chatLog');
+  const composer = document.querySelector('.composer');
+  if (!log || !composer) return;
+
+  if (canUseAI()) {
+    composer.style.display = '';
+    renderChatHistory();
+    return;
+  }
+
+  composer.style.display = 'none';
+  const st = accessState();
+  let html = '';
+
+  if (st === 'no-cloud') {
+    html = '<div class="lock-box"><b>云服务未连接</b>当前无法使用自由提问。检查网络后刷新页面。</div>';
+  } else if (st === 'signed-out') {
+    html = '<div class="lock-box"><b>登录后可用</b>' +
+      '自由提问会调用模型、消耗资源点，需要先登录并取得授权。<br>' +
+      '其他功能不受影响，可以照常用。' +
+      '<br><button id="btnLockLogin" class="primary">登录</button></div>';
+  } else if (st === 'pending') {
+    html = '<div class="lock-box"><b>等待授权</b>' +
+      '你的登录已经记录，管理员批准后就能使用。<br>' +
+      '可以先去「问题诊断」查常见故障，那里不需要授权。' +
+      '<br><button id="btnLockRefresh">刷新状态</button></div>';
+  } else if (st === 'rejected') {
+    html = '<div class="lock-box"><b>未通过授权</b>管理员没有批准你的使用申请。' +
+      '<br><button id="btnLockRefresh">刷新状态</button></div>';
+  } else {
+    html = '<div class="lock-box"><b>正在同步账号</b>请稍候。' +
+      '<br><button id="btnLockRefresh">刷新状态</button></div>';
+  }
+
+  log.innerHTML = html;
+
+  const b1 = document.getElementById('btnLockLogin');
+  if (b1) b1.onclick = openLogin;
+  const b2 = document.getElementById('btnLockRefresh');
+  if (b2) b2.onclick = async () => {
+    b2.disabled = true; b2.textContent = '刷新中';
+    await refreshAuthState();
+    toast('已刷新');
+  };
+}
+
+async function openAdmin() {
+  document.getElementById('adminModal').classList.add('on');
+  await renderAdminList();
+}
+
+async function renderAdminList() {
+  const box = document.getElementById('adminList');
+  box.innerHTML = '<div class="admin-empty">加载中…</div>';
+  const { data, error } = await cloud.database
+    .from('app_users')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) {
+    box.innerHTML = '<div class="admin-empty">读取失败：' + esc(error.message || '未知错误') + '</div>';
+    return;
+  }
+  if (!data || !data.length) {
+    box.innerHTML = '<div class="admin-empty">还没有人登录过</div>';
+    return;
+  }
+  const myUid = uidOf(session);
+  box.innerHTML = data.map(u => {
+    const label = u.display_name || (u.user_id === myUid ? '我' : '用户 ' + String(u.user_id).slice(0, 8));
+    let acts = '';
+    if (u.status === 'pending') {
+      acts = '<button data-act="approve" data-id="' + u.id + '">通过</button>' +
+             '<button data-act="reject" data-id="' + u.id + '" class="danger">拒绝</button>';
+    } else if (u.status === 'approved') {
+      acts = '<button data-act="reject" data-id="' + u.id + '">撤销</button>';
+    } else {
+      acts = '<button data-act="approve" data-id="' + u.id + '">通过</button>';
+    }
+    const badgeCls = u.status === 'approved' ? 'ok' : (u.status === 'rejected' ? 'no' : 'wait');
+    const badgeTxt = u.status === 'approved' ? '已授权' : (u.status === 'rejected' ? '已拒绝' : '待授权');
+    const when = u.created_at ? new Date(u.created_at).toLocaleString('zh-CN') : '';
+    return '<div class="admin-row">' +
+      '<div class="who">' + esc(label) + '<small>' + esc(String(u.user_id)) + ' · ' + esc(when) + '</small></div>' +
+      '<span class="badge ' + badgeCls + '">' + badgeTxt + '</span>' + acts + '</div>';
+  }).join('');
+
+  box.querySelectorAll('button[data-act]').forEach(b => {
+    b.onclick = () => setUserStatus(parseInt(b.dataset.id, 10), b.dataset.act === 'approve' ? 'approved' : 'rejected');
+  });
+}
+
+async function setUserStatus(id, status) {
+  const { data, error } = await cloud.database
+    .from('app_users')
+    .update({ status: status, decided_at: new Date().toISOString() })
+    .eq('id', id)
+    .select();
+  if (error) { toast('操作失败：' + (error.message || '未知错误')); return; }
+  if (!data || !data.length) { toast('没有改动，可能没有权限'); return; }
+  toast(status === 'approved' ? '已授权' : '已拒绝');
+  await renderAdminList();
+  await loadMyRow();
+  renderAuthBox();
+}
+
+/* ============ 云服务与自由提问 ============ */
+
+const CLOUD_CONFIG = {
+  endpoint: 'https://course-design-desk.app.workbuddy.host',
+  oauthRelayBaseUrl: 'https://www.workbuddy.cn/v2/as/genie-baas/oauth',
+  publishableKey: 'wbpk_RHy0Ld543jdSVZSFdSL42R_w5GJX4P76IIBfF8lbjO41kSnYVPO6ytH'
+};
+
+const SYSTEM_PROMPT = [
+  '你是一位电子信息类专业的课程设计指导老师，专长是单片机、模拟与数字电路、传感器、嵌入式系统、PCB 设计和电子测量。你正在指导一名电子信息科学与技术专业的本科生完成课程设计。',
+  '',
+  '回答规则：',
+  '1. 开门见山给判断，再给理由。不寒暄，不评价问题好坏，不写「这是个很好的问题」这类话。',
+  '2. 排查故障时按可能性从高到低列原因，每条跟一个可直接执行的验证动作，写清用什么工具、测哪个点、期望值是多少。',
+  '3. 严格区分「确定」和「需要实测」。数据手册里的参数、引脚定义、典型电路，记不准就直说查手册对应章节，绝不编造具体数值。',
+  '4. 方案要落在学生能做到的范围：手边有万用表、示波器、烙铁、杜邦线，预算有限，时间紧。优先给便宜、快、能当场验证的做法。',
+  '5. 信息不足时，先问清最关键的两三个点（具体芯片型号、完整现象、已经排查过什么），再给方案。不要基于假设直接下结论。',
+  '6. 用分点和短段落，不写大段散文。必要的代码用代码块。',
+  '7. 涉及市电、高压、大电流、锂电池时，明确提醒安全注意事项。',
+  '8. 只处理课程设计相关问题。无关话题简短说明后拉回。'
+].join('\n');
+
+let cloud = null;
+let modelId = '';
+let abortCtrl = null;
+let streaming = false;
+let lastPaint = 0;
+
+function initCloud() {
+  if (typeof WorkBuddyCloud === 'undefined' || !WorkBuddyCloud.createWorkBuddyCloud) {
+    return false;
+  }
+  try {
+    cloud = WorkBuddyCloud.createWorkBuddyCloud({
+      endpoint: CLOUD_CONFIG.endpoint,
+      oauthRelayBaseUrl: CLOUD_CONFIG.oauthRelayBaseUrl,
+      publishableKey: CLOUD_CONFIG.publishableKey
+    });
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+function errText(e) {
+  if (!e) return '未知错误，请重试。';
+  const code = (e.error && e.error.code) || '';
+  const msg = (e.error && e.error.message) || e.message || '';
+  if (code === 'request_stream_required') return '内部参数错误，请刷新页面重试。';
+  if (code.indexOf('request_') === 0) return '请求参数有误，换个问法或缩短问题再试。';
+  if (code.indexOf('auth_') === 0) return '云服务凭据校验失败。通常是因为你直接用本地文件打开了页面——必须通过发布后的正式链接访问才能调用模型。';
+  if (code.indexOf('quota_') === 0) return '额度已用尽或被限流。本月资源点恢复后再试。';
+  if (code.indexOf('gateway_') === 0 || code.indexOf('model_') === 0) return '模型服务暂时不可用，稍后重试。';
+  if (code.indexOf('internal_') === 0) return '服务内部错误' + (e.requestId ? '（请求号 ' + e.requestId + '）' : '') + '，请重试。';
+  return msg || '请求失败，请重试。';
+}
+
+function chatWarn(text) {
+  const log = document.getElementById('chatLog');
+  const d = document.createElement('div');
+  d.className = 'sdk-warn';
+  d.textContent = text;
+  log.appendChild(d);
+  log.scrollTop = log.scrollHeight;
+}
+
+async function loadModels() {
+  const sel = document.getElementById('modelSel');
+  if (!cloud) {
+    sel.innerHTML = '<option value="">未连接</option>';
+    return;
+  }
+  try {
+    const list = await cloud.llm.models.list();
+    const usable = (list || []).filter(m => m.disabled !== true);
+    if (!usable.length) {
+      sel.innerHTML = '<option value="">暂无可用模型</option>';
+      return;
+    }
+    sel.innerHTML = usable.map(m =>
+      '<option value="' + esc(m.id) + '">' + esc(m.name || m.id) + '</option>'
+    ).join('');
+    const saved = state.chat.model;
+    const pick = usable.find(m => m.id === saved) || usable[0];
+    modelId = pick.id;
+    sel.value = modelId;
+    sel.onchange = () => {
+      modelId = sel.value;
+      state.chat.model = modelId;
+      save(true);
+    };
+  } catch (e) {
+    sel.innerHTML = '<option value="">加载失败</option>';
+    chatWarn('模型列表加载失败：' + errText(e));
+  }
+}
+
+/* --- Markdown 渲染（先转义再加标签，防注入） --- */
+
+function mdToHtml(src) {
+  const blocks = [];
+  let s = String(src).replace(/```[a-zA-Z0-9+#-]*\n?([\s\S]*?)```/g, (m, code) => {
+    blocks.push(code.replace(/\n$/, ''));
+    return '@@BLK' + (blocks.length - 1) + '@@';
+  });
+
+  s = esc(s);
+  s = s.replace(/`([^`\n]+)`/g, '<code>$1</code>');
+  s = s.replace(/\*\*([^*\n]+)\*\*/g, '<strong>$1</strong>');
+
+  const lines = s.split('\n');
+  const out = [];
+  let list = null;
+  const closeList = () => { if (list) { out.push('</' + list + '>'); list = null; } };
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+
+    const bm = line.match(/^@@BLK(\d+)@@$/);
+    if (bm) {
+      closeList();
+      out.push('<pre><code>' + esc(blocks[+bm[1]]) + '</code></pre>');
+      continue;
+    }
+    if (!line) { closeList(); continue; }
+
+    const h = line.match(/^#{1,4}\s+(.*)$/);
+    if (h) { closeList(); out.push('<div class="mdh">' + h[1] + '</div>'); continue; }
+
+    const ul = line.match(/^[-*\u00b7]\s+(.*)$/);
+    if (ul) {
+      if (list !== 'ul') { closeList(); out.push('<ul>'); list = 'ul'; }
+      out.push('<li>' + ul[1] + '</li>');
+      continue;
+    }
+
+    const ol = line.match(/^(\d+)[.\uff09)]\s+(.*)$/);
+    if (ol) {
+      if (list !== 'ol') { closeList(); out.push('<ol>'); list = 'ol'; }
+      out.push('<li>' + ol[2] + '</li>');
+      continue;
+    }
+
+    closeList();
+    out.push('<p>' + line + '</p>');
+  }
+  closeList();
+  return out.join('');
+}
+
+/* --- 消息渲染 --- */
+
+function msgNode(role, text) {
+  const wrap = document.createElement('div');
+  wrap.className = 'msg ' + role;
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble';
+  if (role === 'user') {
+    bubble.textContent = text;
+  } else {
+    bubble.innerHTML = text ? mdToHtml(text) : '<span class="cursor"></span>';
+  }
+  wrap.appendChild(bubble);
+
+  if (role === 'ai' && text) {
+    const acts = document.createElement('div');
+    acts.className = 'msg-acts';
+    const b1 = document.createElement('button');
+    b1.textContent = '存到问题记录';
+    b1.onclick = () => saveAnswer(bubble.dataset.raw || text);
+    acts.appendChild(b1);
+    wrap.appendChild(acts);
+  }
+  return wrap;
+}
+
+function appendMsg(role, text) {
+  const log = document.getElementById('chatLog');
+  const empty = log.querySelector('.chat-empty');
+  if (empty) empty.remove();
+  const n = msgNode(role, text);
+  log.appendChild(n);
+  log.scrollTop = log.scrollHeight;
+  return n;
+}
+
+function paintStream(node, text) {
+  const bubble = node.querySelector('.bubble');
+  bubble.dataset.raw = text;
+  bubble.innerHTML = mdToHtml(text) + '<span class="cursor"></span>';
+  const log = document.getElementById('chatLog');
+  log.scrollTop = log.scrollHeight;
+}
+
+function paintDone(node, text) {
+  const wrap = document.createElement('div');
+  wrap.innerHTML = mdToHtml(text);
+  const bubble = node.querySelector('.bubble');
+  bubble.dataset.raw = text;
+  bubble.innerHTML = wrap.innerHTML;
+  if (!node.querySelector('.msg-acts')) {
+    const acts = document.createElement('div');
+    acts.className = 'msg-acts';
+    const b1 = document.createElement('button');
+    b1.textContent = '存到问题记录';
+    b1.onclick = () => saveAnswer(text);
+    acts.appendChild(b1);
+    node.appendChild(acts);
+  }
+}
+
+function renderChatHistory() {
+  const log = document.getElementById('chatLog');
+  log.innerHTML = '';
+  if (!state.chat.messages.length) {
+    log.innerHTML = '<div class="chat-empty"><b>这里可以随便问</b>' +
+      '症状不在排查库里、想问「这样设计行不行」、想让别人帮你读一段代码，都可以。<br>' +
+      '把芯片型号、现象、已经试过什么说清楚，回答会准很多。</div>';
+    return;
+  }
+  state.chat.messages.forEach(m => {
+    const n = msgNode(m.role, m.text);
+    if (m.role === 'ai') {
+      const bubble = n.querySelector('.bubble');
+      bubble.dataset.raw = m.text;
+      bubble.innerHTML = mdToHtml(m.text);
+    }
+    log.appendChild(n);
+  });
+  log.scrollTop = log.scrollHeight;
+}
+
+/* --- 上下文与请求 --- */
+
+function buildMessages(question) {
+  const arr = [{ role: 'system', content: SYSTEM_PROMPT }];
+
+  if (document.getElementById('useCtx').checked) {
+    const p = state.project;
+    const parts = [];
+    if (p.title) parts.push('题目：' + p.title);
+    if (p.course) parts.push('课程/教师：' + p.course);
+    if (p.deadline) parts.push('截止日期：' + p.deadline);
+    parts.push('当前阶段：' + (STAGES[p.stage] ? STAGES[p.stage].name : '未设定'));
+    if (p.brief) parts.push('任务书要求：\n' + p.brief);
+    if (p.goal) parts.push('最终要呈现的效果：\n' + p.goal);
+    if (p.scheme) parts.push('我的方案：\n' + p.scheme);
+    if (Array.isArray(state.docs) && state.docs.length) {
+      let t = state.docs.map(d => '【' + d.name + '】\n' + d.text).join('\n\n');
+      if (t.length > 14000) t = t.slice(0, 14000) + '\n…（已截断）';
+      parts.push('我上传的设计文档（提取文字，节选）：\n' + t);
+    }
+    if (parts.length > 1) {
+      arr.push({
+        role: 'user',
+        content: '下面是我的课程设计背景，只作为上下文参考：\n' + parts.join('\n')
+      });
+      arr.push({ role: 'assistant', content: '收到，已了解你的课设背景。请继续提问。' });
+    }
+  }
+
+  state.chat.messages.slice(-12).forEach(m => {
+    if (m.role === 'user' || m.role === 'assistant' || m.role === 'ai') {
+      arr.push({ role: m.role === 'ai' ? 'assistant' : m.role, content: m.text });
+    }
+  });
+
+  arr.push({ role: 'user', content: question });
+  return arr;
+}
+
+function setBusy(on) {
+  streaming = on;
+  document.getElementById('btnStop').style.display = on ? 'inline-block' : 'none';
+  const send = document.getElementById('btnSend');
+  send.disabled = on;
+  send.textContent = on ? '生成中' : '发送';
+  document.getElementById('chatInput').disabled = false;
+}
+
+async function sendChat() {
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if (!text || streaming) return;
+  if (!canUseAI()) { toast('需要授权才能使用自由提问'); renderChatGate(); return; }
+  if (!cloud) { toast('云服务未连接，请通过发布链接打开'); return; }
+  if (!modelId) { toast('没有可用模型'); return; }
+
+  const messages = buildMessages(text);
+
+  input.value = '';
+  input.style.height = 'auto';
+  appendMsg('user', text);
+  state.chat.messages.push({ role: 'user', text: text });
+  save(true);
+
+  const node = appendMsg('ai', '');
+  setBusy(true);
+  abortCtrl = new AbortController();
+  let acc = '';
+
+  try {
+    const stream = cloud.llm.chat.completions.create({
+      model: modelId,
+      messages: messages,
+      stream: true,
+      stream_options: { include_usage: true },
+      temperature: 0.6,
+      signal: abortCtrl.signal
+    });
+
+    for await (const chunk of stream) {
+      const d = chunk.choices && chunk.choices[0] && chunk.choices[0].delta;
+      if (d && d.content) {
+        acc += d.content;
+        const now = Date.now();
+        if (now - lastPaint > 70) {
+          lastPaint = now;
+          paintStream(node, acc);
+        }
+      }
+    }
+
+    if (acc) {
+      paintDone(node, acc);
+      state.chat.messages.push({ role: 'ai', text: acc });
+    } else {
+      paintDone(node, '（模型没有返回内容，请重试）');
+      state.chat.messages.push({ role: 'ai', text: '（模型没有返回内容，请重试）' });
+    }
+    if (state.chat.messages.length > 40) {
+      state.chat.messages = state.chat.messages.slice(-40);
+    }
+    save(true);
+
+  } catch (e) {
+    if (e && (e.name === 'AbortError' || (e.error && e.error.code === 'abort'))) {
+      if (acc) {
+        paintDone(node, acc + '\n\n（已停止生成）');
+        state.chat.messages.push({ role: 'ai', text: acc + '\n\n（已停止生成）' });
+        save(true);
+      } else {
+        node.remove();
+      }
+    } else {
+      const t = errText(e);
+      paintDone(node, acc ? acc + '\n\n---\n**出错：**' + t : '**出错：**' + t);
+      if (acc) state.chat.messages.push({ role: 'ai', text: acc });
+      save(true);
+    }
+  } finally {
+    abortCtrl = null;
+    setBusy(false);
+    document.getElementById('chatInput').focus();
+  }
+}
+
+function saveAnswer(text) {
+  if (!text) { toast('没有内容'); return; }
+  const plain = text.replace(/[*#`]/g, '').replace(/\n+/g, ' ').trim();
+  state.problems.unshift({
+    id: 'p' + Date.now(),
+    title: '问答：' + (plain.length > 26 ? plain.slice(0, 26) + '…' : plain),
+    note: text,
+    cat: '自由提问',
+    causes: [],
+    steps: [],
+    resolved: false,
+    ts: Date.now()
+  });
+  save();
+  toast('已存入问题记录');
+}
+
+/* --- 事件绑定 --- */
+
+document.getElementById('btnSend').addEventListener('click', sendChat);
+document.getElementById('btnWBLogin').addEventListener('click', loginWithWorkBuddy);
+document.getElementById('btnToggleEmail').addEventListener('click', () => {
+  const f = document.getElementById('emailForm');
+  f.style.display = f.style.display === 'none' ? 'block' : 'none';
+});
+document.getElementById('btnSendCode').addEventListener('click', sendCode);
+document.getElementById('btnEmailLogin').addEventListener('click', submitEmailLogin);
+document.getElementById('loginCancel').addEventListener('click', () => {
+  document.getElementById('loginModal').classList.remove('on');
+});
+document.getElementById('loginModal').addEventListener('click', e => {
+  if (e.target.id === 'loginModal') document.getElementById('loginModal').classList.remove('on');
+});
+document.getElementById('adminClose').addEventListener('click', () => {
+  document.getElementById('adminModal').classList.remove('on');
+});
+document.getElementById('adminModal').addEventListener('click', e => {
+  if (e.target.id === 'adminModal') document.getElementById('adminModal').classList.remove('on');
+});
+document.getElementById('btnStop').addEventListener('click', () => {
+  if (abortCtrl) abortCtrl.abort();
+});
+document.getElementById('btnClearChat').addEventListener('click', () => {
+  if (!state.chat.messages.length) return;
+  if (!confirm('清空当前对话？己保存到问题记录的内容不会受影响。')) return;
+  state.chat.messages = [];
+  save();
+  renderChatHistory();
+});
+
+const chatInput = document.getElementById('chatInput');
+chatInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendChat();
+  }
+});
+chatInput.addEventListener('input', () => {
+  chatInput.style.height = 'auto';
+  chatInput.style.height = Math.min(chatInput.scrollHeight, 160) + 'px';
+});
+
+/* ============ 备份 ============ */
+
+document.getElementById('btnExport').addEventListener('click', () => {
+  const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  const d = new Date();
+  const stamp = d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
+  a.href = URL.createObjectURL(blob);
+  a.download = '课程设计工作台备份-' + stamp + '.json';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('备份已导出');
+});
+
+document.getElementById('btnImport').addEventListener('click', () => {
+  document.getElementById('fileInput').click();
+});
+
+document.getElementById('fileInput').addEventListener('change', e => {
+  const f = e.target.files[0];
+  if (!f) return;
+  const rd = new FileReader();
+  rd.onload = () => {
+    try {
+      const d = JSON.parse(rd.result);
+      if (!d.project) throw new Error('bad');
+      state = Object.assign(defaultState(), d);
+      state.project = Object.assign(defaultState().project, d.project || {});
+      if (!Array.isArray(state.problems)) state.problems = [];
+      save();
+      renderProject();
+      renderRoadmap();
+      renderLogs();
+      toast('已导入');
+    } catch (err) {
+      toast('文件格式不对，导入失败');
+    }
+  };
+  rd.readAsText(f);
+  e.target.value = '';
+});
+
+/* ============ 工具 ============ */
+
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/* ============ 启动 ============ */
+
+load();
+renderProject();
+renderDocs();
+renderCats();
+renderRoadmap();
+renderChatHistory();
+
+(async function boot() {
+  if (!initCloud()) {
+    session = null;
+    renderAuthBox();
+    renderChatGate();
+    return;
+  }
+  await restoreAuth();
+  await loadModels();
+})();
+
+if (!state.project.title && !state.problems.length) {
+  document.getElementById('saveState').textContent = '本地自动保存';
+}
+</script>
+</body>
+</html>
